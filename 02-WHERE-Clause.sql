@@ -1,131 +1,82 @@
 -- ============================================
 -- Chapter 1: Data Definition Language (DDL)
--- 02. Alter Table Commands
+-- 03. Drop Table Command
 -- ============================================
--- ALTER TABLE is used to modify existing table structure:
--- - Add new columns
--- - Drop existing columns
--- - Modify column data types
--- - Rename columns
--- - Add/Drop constraints
+-- DROP TABLE removes an entire table from the database.
+-- WARNING: This is irreversible - all data is lost!
 
 USE company;
 
 -- ============================================
--- EXAMPLE 1: Add a New Column
+-- DROP TABLE: Basic Syntax
 -- ============================================
--- Add a department column to employees table
-ALTER TABLE employees
-ADD COLUMN department VARCHAR(50);
-
--- Add multiple columns at once
-ALTER TABLE employees
-ADD COLUMN phone VARCHAR(20),
-ADD COLUMN manager_id INT;
-
--- Add column at specific position
-ALTER TABLE employees
-ADD COLUMN birth_date DATE AFTER hire_date;
-
--- Add column at the beginning
-ALTER TABLE employees
-ADD COLUMN emp_status VARCHAR(20) FIRST;
+-- DROP TABLE table_name;
 
 -- ============================================
--- EXAMPLE 2: Modify Column Data Type
+-- SAFE DROP TABLE with IF EXISTS
 -- ============================================
--- Change phone from VARCHAR(20) to VARCHAR(15)
-ALTER TABLE employees
-MODIFY COLUMN phone VARCHAR(15);
+-- This prevents errors if the table doesn't exist
+DROP TABLE IF EXISTS temp_table;
 
--- Change salary to store more precision
-ALTER TABLE employees
-MODIFY COLUMN salary DECIMAL(12,2);
-
--- Make a column NOT NULL
-ALTER TABLE employees
-MODIFY COLUMN department VARCHAR(50) NOT NULL;
-
--- Add a default value to existing column
-ALTER TABLE employees
-MODIFY COLUMN emp_status VARCHAR(20) DEFAULT 'Active';
+-- Drop multiple tables
+DROP TABLE IF EXISTS table1, table2, table3;
 
 -- ============================================
--- EXAMPLE 3: Drop a Column
+-- EXAMPLE: Drop with Dependencies
 -- ============================================
--- Remove the manager_id column
-ALTER TABLE employees
-DROP COLUMN manager_id;
+-- If there are FOREIGN KEY constraints, you may need to:
+-- 1. Drop dependent tables first
+-- 2. Or disable foreign key checks (not recommended)
 
--- Drop multiple columns (one statement each)
-ALTER TABLE employees
-DROP COLUMN birth_date;
+-- Option 1: Drop in correct order (child tables first, then parent)
+DROP TABLE IF EXISTS orders;          -- Child table
+DROP TABLE IF EXISTS order_items;    -- Child table
+DROP TABLE IF EXISTS customers;      -- Parent table
 
--- ============================================
--- EXAMPLE 4: Rename Column
--- ============================================
--- Change 'email' column to 'email_address'
-ALTER TABLE employees
-RENAME COLUMN email TO email_address;
-
--- Alternative MySQL syntax (older versions):
--- ALTER TABLE employees
--- CHANGE COLUMN email email_address VARCHAR(100) UNIQUE;
+-- Option 2: Temporarily disable foreign key checks (use with caution)
+-- SET FOREIGN_KEY_CHECKS=0;
+-- DROP TABLE customers;
+-- SET FOREIGN_KEY_CHECKS=1;
 
 -- ============================================
--- EXAMPLE 5: Rename Table
+-- TRUNCATE vs DROP
 -- ============================================
--- Rename 'employees' table to 'staff'
--- ALTER TABLE employees
--- RENAME TO staff;
+-- TRUNCATE: Deletes all rows but keeps table structure
+--   - Faster than DELETE
+--   - Resets AUTO_INCREMENT counter
+--   - Less undo logs (more efficient)
+-- DROP: Removes entire table including structure
+--   - Must recreate table to use again
+--   - Slower recovery from accidental delete
 
--- Alternative MySQL syntax:
--- RENAME TABLE employees TO staff;
+-- TRUNCATE example:
+TRUNCATE TABLE employees;   -- Clears all data, keeps structure
 
--- ============================================
--- EXAMPLE 6: Add Constraints
--- ============================================
--- Add PRIMARY KEY constraint
--- ALTER TABLE employees
--- ADD PRIMARY KEY (emp_id);
-
--- Add UNIQUE constraint
-ALTER TABLE employees
-ADD UNIQUE (email_address);
-
--- Add CHECK constraint
-ALTER TABLE employees
-ADD CONSTRAINT check_salary CHECK (salary > 0);
-
--- Add FOREIGN KEY constraint
-ALTER TABLE employees
-ADD CONSTRAINT fk_dept_id 
-FOREIGN KEY (department) REFERENCES departments(dept_name);
+-- Drop example:
+-- DROP TABLE employees;    -- Removes table completely
 
 -- ============================================
--- EXAMPLE 7: Drop Constraints
+-- REAL-WORLD SCENARIOS
 -- ============================================
--- Drop UNIQUE constraint
-ALTER TABLE employees
-DROP INDEX email_address;
+-- Scenario 1: Cleanup during development
+-- IF developing locally and want fresh start:
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS orders;
 
--- Drop FOREIGN KEY constraint
-ALTER TABLE employees
-DROP FOREIGN KEY fk_dept_id;
-
--- Drop CHECK constraint
-ALTER TABLE employees
-DROP CHECK check_salary;
-
--- ============================================
--- EXAMPLE 8: Change Column Position
--- ============================================
--- Move department column after hire_date
-ALTER TABLE employees
-MODIFY COLUMN department VARCHAR(50) AFTER hire_date;
+-- Scenario 2: Archive old data then drop
+-- Best practice: Backup data before dropping
+CREATE TABLE employees_backup AS
+SELECT * FROM employees;
+-- After verification, then drop:
+-- DROP TABLE employees;
 
 -- ============================================
--- Verify Changes
+-- IMPORTANT REMINDERS
 -- ============================================
-DESCRIBE employees;
-SHOW COLUMNS FROM employees;
+-- 1. ALWAYS backup data before dropping
+-- 2. Use IF EXISTS to prevent errors in scripts
+-- 3. Consider TRUNCATE if you only want to clear data
+-- 4. Drop tables in correct order (children before parents)
+-- 5. Turn off foreign key checks only when necessary
+-- 6. This action CANNOT be undone - be careful!

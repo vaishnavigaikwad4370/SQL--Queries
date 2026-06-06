@@ -1,182 +1,185 @@
 -- ============================================
 -- Chapter 1: Additional Base Operations
--- 02. Self Join Queries
+-- 03. String Operations and Pattern Matching
 -- ============================================
--- A SELF JOIN is when a table is joined with itself.
--- This is useful for comparing rows within the same table (e.g., finding reporting relationships).
+-- LIKE operator with wildcards % and _ for pattern matching
+-- Additional string functions for manipulation
 
 USE company;
 
--- Setup: Create employees table with manager information
-CREATE TABLE IF NOT EXISTS employees_with_mgr (
-    emp_id INT PRIMARY KEY,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    salary DECIMAL(10,2),
-    manager_id INT,
-    FOREIGN KEY (manager_id) REFERENCES employees_with_mgr(emp_id)
-);
+-- ============================================
+-- 1. LIKE OPERATOR: Basic Pattern Matching
+-- ============================================
+-- '%' wildcard: Zero or more characters
+-- '_' wildcard: Exactly one character
+-- Case-insensitive by default in MySQL
 
-INSERT INTO employees_with_mgr VALUES
-(1, 'Alice', 'Smith', 90000, NULL),           -- CEO, no manager
-(2, 'Bob', 'Johnson', 75000, 1),              -- Reports to Alice
-(3, 'Charlie', 'Brown', 70000, 1),            -- Reports to Alice
-(4, 'Diana', 'Davis', 65000, 2),              -- Reports to Bob
-(5, 'Eve', 'Wilson', 62000, 2),               -- Reports to Bob
-(6, 'Frank', 'Miller', 68000, 3);             -- Reports to Charlie
+SELECT * FROM employees WHERE first_name LIKE 'J%';
 
 -- ============================================
--- 1. BASIC SELF JOIN: Employee and Manager
+-- 2. PATTERN MATCHING: Starts With
 -- ============================================
--- Find each employee and their manager's name
-SELECT 
-    e.first_name AS 'Employee Name',
-    e.salary AS 'Employee Salary',
-    m.first_name AS 'Manager Name',
-    m.salary AS 'Manager Salary'
-FROM employees_with_mgr e
-JOIN employees_with_mgr m ON e.manager_id = m.emp_id;
+-- Find all employees whose first name starts with 'J'
+SELECT first_name FROM employees WHERE first_name LIKE 'J%';
+
+-- Find all employees whose last name starts with 'D'
+SELECT first_name, last_name FROM employees WHERE last_name LIKE 'D%';
+
+-- Find all emails starting with 'john'
+SELECT email FROM employees WHERE email LIKE 'john%';
 
 -- ============================================
--- 2. SELF JOIN WITH LEFT JOIN (Include Employees with No Manager)
+-- 3. PATTERN MATCHING: Ends With
 -- ============================================
--- Include employees who have no manager (top-level)
-SELECT 
-    e.first_name AS 'Employee',
-    COALESCE(m.first_name, 'None (CEO)') AS 'Manager'
-FROM employees_with_mgr e
-LEFT JOIN employees_with_mgr m ON e.manager_id = m.emp_id;
+-- Find all employees whose last name ends with 'son'
+SELECT first_name, last_name FROM employees WHERE last_name LIKE '%son';
+
+-- Find all emails ending with '.com'
+SELECT email FROM employees WHERE email LIKE '%.com';
+
+-- Find all departments ending with 's'
+SELECT DISTINCT department FROM employees WHERE department LIKE '%s';
 
 -- ============================================
--- 3. SELF JOIN: Comparing Two Instances
+-- 4. PATTERN MATCHING: Contains (Middle)
 -- ============================================
--- Find pairs of employees in the same department with similar salaries
--- First, add department to employees table
-ALTER TABLE employees_with_mgr
-ADD COLUMN department VARCHAR(50) DEFAULT 'General';
+-- Find all employees whose first name contains 'oh'
+SELECT first_name FROM employees WHERE first_name LIKE '%oh%';
 
--- Update departments for examples
-UPDATE employees_with_mgr SET department = 'Sales' WHERE emp_id IN (1, 2, 3);
-UPDATE employees_with_mgr SET department = 'IT' WHERE emp_id IN (4, 5, 6);
-
--- Find employees earning similar salaries in the same department
-SELECT 
-    e1.first_name AS 'Employee 1',
-    e1.salary AS 'Salary 1',
-    e2.first_name AS 'Employee 2',
-    e2.salary AS 'Salary 2',
-    e1.department AS 'Department'
-FROM employees_with_mgr e1
-JOIN employees_with_mgr e2 
-    ON e1.department = e2.department 
-    AND e1.emp_id < e2.emp_id
-    AND ABS(e1.salary - e2.salary) < 5000;
+-- Find all emails containing 'email'
+SELECT email FROM employees WHERE email LIKE '%email%';
 
 -- ============================================
--- 4. SELF JOIN: Finding Duplicates
+-- 5. SINGLE CHARACTER WILDCARD: _
 -- ============================================
--- Example: Find employees with the same last name (potential relatives)
-SELECT 
-    e1.first_name AS 'First Name 1',
-    e1.last_name,
-    e2.first_name AS 'First Name 2'
-FROM employees_with_mgr e1
-JOIN employees_with_mgr e2 
-    ON e1.last_name = e2.last_name
-    AND e1.emp_id < e2.emp_id;
+-- Exactly one character in the position
+-- '_' represents exactly one character (any character)
+
+-- Find names of length 4: B_b matches 'Bob'
+SELECT first_name FROM employees WHERE first_name LIKE 'B_b';
+
+-- Find names starting with 'J' and having 4 characters: J_h_ would match 'John'
+SELECT first_name FROM employees WHERE first_name LIKE 'J___';
+
+-- Find emails with format: xxx@email.com (where xxx is 3-4 chars)
+SELECT email FROM employees WHERE email LIKE '____%@email.com';
 
 -- ============================================
--- 5. MULTIPLE LEVELS: Employee -> Manager -> Manager's Manager
+-- 6. COMBINING WILDCARDS
 -- ============================================
--- Three-level hierarchy
-SELECT 
-    e.first_name AS 'Employee',
-    m1.first_name AS 'Direct Manager',
-    m2.first_name AS 'Manager\'s Manager'
-FROM employees_with_mgr e
-LEFT JOIN employees_with_mgr m1 ON e.manager_id = m1.emp_id
-LEFT JOIN employees_with_mgr m2 ON m1.manager_id = m2.emp_id;
+-- Name with 'a' as second character
+SELECT first_name FROM employees WHERE first_name LIKE '_a%';
+
+-- Email with 'j' somewhere and '.com' at end
+SELECT email FROM employees WHERE email LIKE '%j%@%.com';
 
 -- ============================================
--- 6. SELF JOIN WITH AGGREGATION
+-- 7. NOT LIKE: Negative Pattern Matching
 -- ============================================
--- Average salary by department, comparing with manager's average
--- (Showing the concept of complex self joins)
+-- Employees whose first name does NOT start with 'J'
+SELECT first_name FROM employees WHERE first_name NOT LIKE 'J%';
 
--- ============================================
--- 7. SELF JOIN: Finding Parent-Child Records
--- ============================================
--- Example with categories and subcategories
-CREATE TABLE IF NOT EXISTS categories (
-    category_id INT PRIMARY KEY,
-    category_name VARCHAR(50),
-    parent_category_id INT,
-    FOREIGN KEY (parent_category_id) REFERENCES categories(category_id)
-);
-
-INSERT INTO categories VALUES
-(1, 'Electronics', NULL),
-(2, 'Computers', 1),
-(3, 'Laptops', 2),
-(4, 'Desktops', 2),
-(5, 'Phones', 1),
-(6, 'Smartphones', 5);
-
--- Find subcategories with their parent category
-SELECT 
-    c.category_name AS 'Subcategory',
-    p.category_name AS 'Parent Category'
-FROM categories c
-LEFT JOIN categories p ON c.parent_category_id = p.category_id;
+-- Employees not in IT department
+SELECT first_name, department FROM employees WHERE department NOT LIKE '%IT%';
 
 -- ============================================
--- 8. SELF JOIN: Organizational Chart
+-- 8. CASE-SENSITIVE PATTERN MATCHING
 -- ============================================
--- Create a simple organizational hierarchy display
-SELECT 
-    CONCAT(REPEAT('  ', 0), e.first_name) AS 'Organizational Hierarchy'
-FROM employees_with_mgr e
-WHERE e.manager_id IS NULL
+-- By default LIKE is case-insensitive
+SELECT first_name FROM employees WHERE first_name LIKE 'john';  -- Matches 'John'
 
-UNION ALL
-
-SELECT 
-    CONCAT(REPEAT('  ', 1), e.first_name)
-FROM employees_with_mgr e
-WHERE e.manager_id IS NOT NULL;
+-- For case-sensitive matching, use BINARY
+SELECT first_name FROM employees WHERE first_name LIKE BINARY 'john';  -- Matches only 'john'
 
 -- ============================================
--- 9. SELF JOIN: Finding Related Records
+-- 9. ESCAPING SPECIAL CHARACTERS
 -- ============================================
--- Example: Students in same year
-CREATE TABLE IF NOT EXISTS students (
-    student_id INT PRIMARY KEY,
-    student_name VARCHAR(50),
-    year_of_study INT
-);
+-- If pattern contains % or _, escape with backslash
 
-INSERT INTO students VALUES
-(1, 'Alice', 2),
-(2, 'Bob', 2),
-(3, 'Charlie', 3),
-(4, 'Diana', 2),
-(5, 'Eve', 3);
+-- Find product names containing '%' character
+-- SELECT product_name FROM products WHERE product_name LIKE '%\%%' ESCAPE '\';
 
--- Find classmates (students in same year)
-SELECT 
-    s1.student_name AS 'Student 1',
-    s2.student_name AS 'Student 2 (Classmate)',
-    s1.year_of_study AS 'Year'
-FROM students s1
-JOIN students s2 
-    ON s1.year_of_study = s2.year_of_study
-    AND s1.student_id < s2.student_id;
+-- Find names with underscore
+-- SELECT name FROM users WHERE name LIKE '%\__%' ESCAPE '\';
 
 -- ============================================
--- 10. IMPORTANT NOTES FOR SELF JOINS
+-- 10. STRING FUNCTIONS
 -- ============================================
--- - Always use table aliases (e1, e2) to distinguish the two instances
--- - Use meaningful alias names (e.g., e and m for employee and manager)
--- - Add conditions to avoid duplicate comparisons (e.g., e1.emp_id < e2.emp_id)
--- - Use LEFT JOIN when some records might not have matching pairs
--- - Self joins can be less efficient with large tables - consider indexing
+
+-- LENGTH: Get string length
+SELECT first_name, LENGTH(first_name) AS name_length FROM employees;
+
+-- UPPER: Convert to uppercase
+SELECT UPPER(first_name) AS uppercase_name FROM employees;
+
+-- LOWER: Convert to lowercase
+SELECT LOWER(first_name) AS lowercase_name FROM employees;
+
+-- SUBSTRING: Extract portion of string
+SELECT first_name, SUBSTRING(first_name, 1, 3) AS first_three FROM employees;
+
+-- CONCAT: Combine strings
+SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM employees;
+
+-- CONCAT_WS: Concatenate with separator
+SELECT CONCAT_WS(' - ', first_name, last_name, email) FROM employees;
+
+-- TRIM: Remove leading/trailing spaces
+SELECT TRIM('  John  ') AS trimmed_name;
+
+-- REPLACE: Replace part of string
+SELECT first_name, REPLACE(first_name, 'o', '0') AS replaced FROM employees;
+
+-- REVERSE: Reverse string
+SELECT REVERSE(first_name) AS reversed FROM employees;
+
+-- ============================================
+-- 11. COMBINING PATTERN MATCHING WITH FUNCTIONS
+-- ============================================
+
+-- Find employees with first name starting with J (case-insensitive)
+SELECT * FROM employees WHERE LOWER(first_name) LIKE 'j%';
+
+-- Find employees whose email contains first name
+SELECT * FROM employees 
+WHERE email LIKE CONCAT('%', LOWER(first_name), '%');
+
+-- Find long first names (more than 5 characters) starting with 'A'
+SELECT first_name FROM employees 
+WHERE first_name LIKE 'A%' AND LENGTH(first_name) > 5;
+
+-- ============================================
+-- 12. PRACTICAL EXAMPLES
+-- ============================================
+
+-- Example 1: Search for employees by partial name
+SELECT * FROM employees
+WHERE first_name LIKE '%ar%' OR last_name LIKE '%ar%';
+
+-- Example 2: Find invalid emails (missing domain)
+SELECT email FROM employees
+WHERE email NOT LIKE '%@%.%';
+
+-- Example 3: Find employees from specific cities (based on email domain)
+SELECT first_name, email
+FROM employees
+WHERE email LIKE '%@gmail.com' OR email LIKE '%@yahoo.com';
+
+-- Example 4: Department search
+SELECT DISTINCT department FROM employees
+WHERE department LIKE 'S%' OR department LIKE '%T%';
+
+-- Example 5: Complex search - multi-criteria
+SELECT first_name, email, salary
+FROM employees
+WHERE (first_name LIKE 'J%' OR last_name LIKE '%son')
+  AND salary > 65000;
+
+-- ============================================
+-- 13. PERFORMANCE CONSIDERATIONS
+-- ============================================
+-- - LIKE with leading wildcard (e.g., '%name') is slower - avoid if possible
+-- - LIKE with starting wildcard (e.g., 'name%') is faster - uses indexes
+-- - Use LIKE only when pattern matching is needed
+-- - For exact matches, use '=' instead of LIKE
+-- - Index considerations: Create indexes on columns frequently searched with LIKE

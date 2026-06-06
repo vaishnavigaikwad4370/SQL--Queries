@@ -1,148 +1,193 @@
 -- ============================================
 -- Chapter 1: Basic Query Components
--- 01. The Select Clause
+-- 02. The Where Clause
 -- ============================================
--- The SELECT clause specifies which columns to retrieve from a table.
--- It can include:
--- - Column names
--- - Expressions and calculations
--- - Literal values
--- - DISTINCT to remove duplicates
--- - ALL to include duplicates (default)
+-- The WHERE clause filters rows based on conditions.
+-- Only rows that satisfy the condition are returned.
 
 USE company;
 
--- Setup: Create sample data
-CREATE TABLE IF NOT EXISTS employees (
-    emp_id INT PRIMARY KEY AUTO_INCREMENT,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    salary DECIMAL(10,2),
-    department VARCHAR(50),
-    hire_date DATE
-);
-
-INSERT INTO employees (first_name, last_name, email, salary, department, hire_date) VALUES
-('John', 'Doe', 'john@email.com', 75000, 'Sales', '2022-01-15'),
-('Jane', 'Smith', 'jane@email.com', 82000, 'IT', '2023-02-20'),
-('Bob', 'Johnson', 'bob@email.com', 60000, 'Sales', '2023-03-10'),
-('Alice', 'Williams', 'alice@email.com', 72000, 'HR', '2023-04-05'),
-('Mike', 'Brown', 'mike@email.com', 68000, 'IT', '2023-05-12'),
-('Sara', 'Davis', 'sara@email.com', 75000, 'Sales', '2023-06-01');
-
 -- ============================================
--- 1. SELECT ALL COLUMNS (*)
+-- 1. COMPARISON PREDICATES
 -- ============================================
-SELECT * FROM employees;
+-- Equal to
+SELECT * FROM employees WHERE department = 'Sales';
+
+-- Not equal to
+SELECT * FROM employees WHERE department != 'IT';
+-- Alternative: WHERE department <> 'IT';
+
+-- Greater than
+SELECT * FROM employees WHERE salary > 70000;
+
+-- Less than
+SELECT * FROM employees WHERE salary < 70000;
+
+-- Greater than or equal
+SELECT * FROM employees WHERE salary >= 70000;
+
+-- Less than or equal
+SELECT * FROM employees WHERE salary <= 70000;
 
 -- ============================================
--- 2. SELECT SPECIFIC COLUMNS
+-- 2. LOGICAL CONNECTIVES: AND
 -- ============================================
--- Retrieve only first_name and last_name
-SELECT first_name, last_name FROM employees;
+-- All conditions must be true (AND)
+SELECT * FROM employees
+WHERE salary > 70000 AND department = 'Sales';
 
--- Retrieve first_name, email, and salary
-SELECT first_name, email, salary FROM employees;
+SELECT * FROM employees
+WHERE salary > 60000 AND salary < 80000;
 
--- ============================================
--- 3. PROJECTIONS: Reordering Columns
--- ============================================
--- Retrieve in different order
-SELECT salary, first_name, email FROM employees;
+SELECT * FROM employees
+WHERE department = 'IT' AND salary >= 70000;
 
 -- ============================================
--- 4. DISTINCT: Remove Duplicates
+-- 3. LOGICAL CONNECTIVES: OR
 -- ============================================
--- Get unique departments (removes duplicates)
-SELECT DISTINCT department FROM employees;
+-- At least one condition must be true (OR)
+SELECT * FROM employees
+WHERE department = 'Sales' OR department = 'IT';
 
--- Get unique salary values
-SELECT DISTINCT salary FROM employees;
+SELECT * FROM employees
+WHERE salary < 60000 OR salary > 80000;
 
--- DISTINCT with multiple columns
-SELECT DISTINCT department, salary FROM employees;
-
--- ============================================
--- 5. ALL: Include All Rows (Default Behavior)
--- ============================================
--- Explicitly include duplicates (redundant - ALL is default)
-SELECT ALL department FROM employees;
+SELECT * FROM employees
+WHERE first_name = 'John' OR first_name = 'Jane';
 
 -- ============================================
--- 6. LITERAL ATTRIBUTES: Fixed Values
+-- 4. LOGICAL CONNECTIVES: NOT
 -- ============================================
--- Select literal strings and numbers
-SELECT 'Employee' AS label, first_name, salary FROM employees;
+-- Negate a condition (NOT)
+SELECT * FROM employees
+WHERE NOT department = 'HR';
 
--- Mix columns with literals
-SELECT 'Active' AS status, first_name, 'Company XYZ' AS company FROM employees;
+SELECT * FROM employees
+WHERE NOT (salary < 70000);   -- salary >= 70000
 
--- ============================================
--- 7. ARITHMETIC EXPRESSIONS
--- ============================================
--- Calculate annual salary (monthly * 12)
-SELECT first_name, salary, salary * 12 AS annual_salary FROM employees;
-
--- Calculate salary increase (10% raise)
-SELECT first_name, salary, salary * 1.1 AS new_salary FROM employees;
-
--- Calculate years of service
-SELECT first_name, YEAR(CURDATE()) - YEAR(hire_date) AS years_of_service FROM employees;
+SELECT * FROM employees
+WHERE NOT (department = 'IT' AND salary > 75000);
 
 -- ============================================
--- 8. STRING CONCATENATION
+-- 5. COMBINING AND, OR, NOT (with Parentheses)
 -- ============================================
--- Combine first and last names
-SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM employees;
+-- (A AND B) OR C
+SELECT * FROM employees
+WHERE (department = 'Sales' AND salary > 70000) 
+   OR (department = 'IT' AND salary > 75000);
 
--- Alternative syntax with AS
-SELECT first_name, last_name, CONCAT(first_name, ' ', last_name) AS full_name FROM employees;
+-- A AND (B OR C)
+SELECT * FROM employees
+WHERE salary > 70000 AND (department = 'IT' OR department = 'HR');
 
--- ============================================
--- 9. COLUMN ALIASES (Renaming Output)
--- ============================================
--- Using AS keyword (explicit)
-SELECT 
-    first_name AS 'First Name',
-    last_name AS 'Last Name',
-    salary AS 'Monthly Salary'
-FROM employees;
-
--- Without AS keyword (implicit)
-SELECT 
-    first_name 'Employee Name',
-    salary 'Salary Amount'
-FROM employees;
+-- NOT (A AND B)
+SELECT * FROM employees
+WHERE NOT (department = 'Sales' AND salary < 70000);
 
 -- ============================================
--- 10. COMBINING PROJECTIONS, EXPRESSIONS, AND ALIASES
+-- 6. BETWEEN: Range Filter
 -- ============================================
-SELECT
-    emp_id AS 'Employee ID',
-    CONCAT(first_name, ' ', last_name) AS 'Full Name',
-    email AS 'Email Address',
-    salary AS 'Monthly Salary',
-    salary * 12 AS 'Annual Salary',
-    department AS 'Department',
-    YEAR(CURDATE()) - YEAR(hire_date) AS 'Years in Company'
-FROM employees;
+-- Inclusive range (salary between 60000 and 80000)
+SELECT * FROM employees
+WHERE salary BETWEEN 60000 AND 80000;
+
+-- Outside range (using NOT BETWEEN)
+SELECT * FROM employees
+WHERE salary NOT BETWEEN 60000 AND 80000;
+
+-- Date range
+SELECT * FROM employees
+WHERE hire_date BETWEEN '2022-01-01' AND '2023-06-30';
 
 -- ============================================
--- 11. SELECT WITH MATHEMATICAL FUNCTIONS
+-- 7. IN: Set Membership
 -- ============================================
-SELECT
-    first_name,
-    salary,
-    ROUND(salary * 1.15, 2) AS 'Salary with 15% Bonus',
-    FLOOR(salary / 12) AS 'Weekly Estimate',
-    CEIL(salary / 26) AS 'Bi-weekly Amount'
-FROM employees;
+-- Match any value in the list
+SELECT * FROM employees
+WHERE department IN ('Sales', 'IT', 'HR');
+
+-- Not in any value
+SELECT * FROM employees
+WHERE department NOT IN ('Sales', 'IT');
+
+-- IN with numbers
+SELECT * FROM employees
+WHERE emp_id IN (1, 3, 5);
 
 -- ============================================
--- 12. COUNTING WITH SELECT
+-- 8. LIKE: Pattern Matching
 -- ============================================
--- Count total number of rows
-SELECT COUNT(*) AS total_employees FROM employees;
+-- '%' wildcard: zero or more characters
+-- '_' wildcard: exactly one character
 
--- But note: More detail on COUNT() in Aggregate Functions section
+-- Starts with 'J'
+SELECT * FROM employees
+WHERE first_name LIKE 'J%';
+
+-- Ends with 'n'
+SELECT * FROM employees
+WHERE last_name LIKE '%n';
+
+-- Contains 'oh'
+SELECT * FROM employees
+WHERE first_name LIKE '%oh%';
+
+-- Single character wildcard (e.g., B_b matches 'Bob')
+SELECT * FROM employees
+WHERE first_name LIKE 'B_b';
+
+-- Case insensitive (LIKE is case-insensitive in MySQL by default)
+SELECT * FROM employees
+WHERE first_name LIKE 'john';  -- Matches 'John'
+
+-- ============================================
+-- 9. IS NULL AND IS NOT NULL
+-- ============================================
+-- Check for NULL values
+SELECT * FROM employees
+WHERE email IS NULL;
+
+-- Check for non-NULL values
+SELECT * FROM employees
+WHERE email IS NOT NULL;
+
+-- Combining with other conditions
+SELECT * FROM employees
+WHERE department IS NOT NULL AND salary > 70000;
+
+-- ============================================
+-- 10. COMPLEX WHERE CLAUSE EXAMPLES
+-- ============================================
+-- Find all employees in Sales or IT with salary > 65000
+SELECT * FROM employees
+WHERE (department = 'Sales' OR department = 'IT')
+  AND salary > 65000;
+
+-- Find employees hired after 2023-01-01 in non-HR departments
+SELECT * FROM employees
+WHERE hire_date > '2023-01-01'
+  AND department != 'HR';
+
+-- Find employees not in IT or Sales earning between 60k-80k
+SELECT * FROM employees
+WHERE department NOT IN ('IT', 'Sales')
+  AND salary BETWEEN 60000 AND 80000;
+
+-- Find employees whose first name starts with 'J' and salary > 75000
+SELECT * FROM employees
+WHERE first_name LIKE 'J%'
+  AND salary > 75000;
+
+-- ============================================
+-- 11. OPERATOR PRECEDENCE
+-- ============================================
+-- MySQL evaluates: NOT > AND > OR
+-- To avoid confusion, use parentheses explicitly
+
+-- Ambiguous (should use parentheses):
+-- SELECT * FROM employees WHERE department = 'Sales' OR department = 'IT' AND salary > 70000;
+
+-- Clear version (with parentheses):
+SELECT * FROM employees
+WHERE department = 'Sales' 
+   OR (department = 'IT' AND salary > 70000);

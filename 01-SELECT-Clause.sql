@@ -1,95 +1,131 @@
 -- ============================================
 -- Chapter 1: Data Definition Language (DDL)
--- 01. Create Table Construct
+-- 02. Alter Table Commands
 -- ============================================
--- CREATE TABLE is used to define the schema for a table, specifying:
--- - Column names and data types
--- - Constraints (Primary Key, Unique, Not Null, Check, Default)
--- - Indexes and relationships
+-- ALTER TABLE is used to modify existing table structure:
+-- - Add new columns
+-- - Drop existing columns
+-- - Modify column data types
+-- - Rename columns
+-- - Add/Drop constraints
 
--- Step 1: Create a database to work with
-CREATE DATABASE IF NOT EXISTS company;
 USE company;
 
 -- ============================================
--- BASIC CREATE TABLE SYNTAX
+-- EXAMPLE 1: Add a New Column
 -- ============================================
-CREATE TABLE employees (
-    emp_id INT PRIMARY KEY AUTO_INCREMENT,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    hire_date DATE,
-    salary DECIMAL(10,2) DEFAULT 50000
-);
+-- Add a department column to employees table
+ALTER TABLE employees
+ADD COLUMN department VARCHAR(50);
+
+-- Add multiple columns at once
+ALTER TABLE employees
+ADD COLUMN phone VARCHAR(20),
+ADD COLUMN manager_id INT;
+
+-- Add column at specific position
+ALTER TABLE employees
+ADD COLUMN birth_date DATE AFTER hire_date;
+
+-- Add column at the beginning
+ALTER TABLE employees
+ADD COLUMN emp_status VARCHAR(20) FIRST;
 
 -- ============================================
--- EXAMPLE: Products Table
+-- EXAMPLE 2: Modify Column Data Type
 -- ============================================
-CREATE TABLE products (
-    product_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_name VARCHAR(100) NOT NULL,
-    category VARCHAR(50),
-    price DECIMAL(10,2) NOT NULL,
-    stock_quantity INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Change phone from VARCHAR(20) to VARCHAR(15)
+ALTER TABLE employees
+MODIFY COLUMN phone VARCHAR(15);
+
+-- Change salary to store more precision
+ALTER TABLE employees
+MODIFY COLUMN salary DECIMAL(12,2);
+
+-- Make a column NOT NULL
+ALTER TABLE employees
+MODIFY COLUMN department VARCHAR(50) NOT NULL;
+
+-- Add a default value to existing column
+ALTER TABLE employees
+MODIFY COLUMN emp_status VARCHAR(20) DEFAULT 'Active';
 
 -- ============================================
--- EXAMPLE: Customers Table with Constraints
+-- EXAMPLE 3: Drop a Column
 -- ============================================
-CREATE TABLE customers (
-    customer_id INT PRIMARY KEY AUTO_INCREMENT,
-    customer_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    address VARCHAR(255),
-    city VARCHAR(50),
-    country VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Remove the manager_id column
+ALTER TABLE employees
+DROP COLUMN manager_id;
+
+-- Drop multiple columns (one statement each)
+ALTER TABLE employees
+DROP COLUMN birth_date;
 
 -- ============================================
--- EXAMPLE: Orders Table with Foreign Key
+-- EXAMPLE 4: Rename Column
 -- ============================================
-CREATE TABLE orders (
-    order_id INT PRIMARY KEY AUTO_INCREMENT,
-    customer_id INT NOT NULL,
-    order_date DATE NOT NULL,
-    total_amount DECIMAL(10,2),
-    status VARCHAR(20) DEFAULT 'Pending',
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-);
+-- Change 'email' column to 'email_address'
+ALTER TABLE employees
+RENAME COLUMN email TO email_address;
+
+-- Alternative MySQL syntax (older versions):
+-- ALTER TABLE employees
+-- CHANGE COLUMN email email_address VARCHAR(100) UNIQUE;
 
 -- ============================================
--- DATA TYPES USED IN CREATE TABLE
+-- EXAMPLE 5: Rename Table
 -- ============================================
--- NUMERIC:
---   INT: 4-byte integer (-2,147,483,648 to 2,147,483,647)
---   TINYINT: 1-byte integer (0-255 or -128-127)
---   BIGINT: 8-byte integer
---   DECIMAL(M,D): Fixed-point, M=total digits, D=decimal places
---   FLOAT, DOUBLE: Approximate floating-point
+-- Rename 'employees' table to 'staff'
+-- ALTER TABLE employees
+-- RENAME TO staff;
 
--- STRING:
---   VARCHAR(N): Variable-length string (up to 65,535 chars)
---   CHAR(N): Fixed-length string (up to 255 chars)
---   TEXT: Large text (up to 65,535 chars)
---   LONGTEXT: Very large text (up to 4GB)
---   ENUM: One value from predefined list
-
--- DATE/TIME:
---   DATE: Format YYYY-MM-DD
---   TIME: Format HH:MM:SS
---   DATETIME: Format YYYY-MM-DD HH:MM:SS
---   TIMESTAMP: DATETIME with automatic update
---   YEAR: 4-digit year
+-- Alternative MySQL syntax:
+-- RENAME TABLE employees TO staff;
 
 -- ============================================
--- VERIFY TABLE STRUCTURE
+-- EXAMPLE 6: Add Constraints
+-- ============================================
+-- Add PRIMARY KEY constraint
+-- ALTER TABLE employees
+-- ADD PRIMARY KEY (emp_id);
+
+-- Add UNIQUE constraint
+ALTER TABLE employees
+ADD UNIQUE (email_address);
+
+-- Add CHECK constraint
+ALTER TABLE employees
+ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+-- Add FOREIGN KEY constraint
+ALTER TABLE employees
+ADD CONSTRAINT fk_dept_id 
+FOREIGN KEY (department) REFERENCES departments(dept_name);
+
+-- ============================================
+-- EXAMPLE 7: Drop Constraints
+-- ============================================
+-- Drop UNIQUE constraint
+ALTER TABLE employees
+DROP INDEX email_address;
+
+-- Drop FOREIGN KEY constraint
+ALTER TABLE employees
+DROP FOREIGN KEY fk_dept_id;
+
+-- Drop CHECK constraint
+ALTER TABLE employees
+DROP CHECK check_salary;
+
+-- ============================================
+-- EXAMPLE 8: Change Column Position
+-- ============================================
+-- Move department column after hire_date
+ALTER TABLE employees
+MODIFY COLUMN department VARCHAR(50) AFTER hire_date;
+
+-- ============================================
+-- Verify Changes
 -- ============================================
 DESCRIBE employees;
--- Or use: SHOW COLUMNS FROM employees;
-
--- See all created tables
-SHOW TABLES;
+SHOW COLUMNS FROM employees;

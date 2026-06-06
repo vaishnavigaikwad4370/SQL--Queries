@@ -1,185 +1,243 @@
 -- ============================================
 -- Chapter 1: Additional Base Operations
--- 03. String Operations and Pattern Matching
+-- 04. Ordering the Display of Tuples (ORDER BY)
 -- ============================================
--- LIKE operator with wildcards % and _ for pattern matching
--- Additional string functions for manipulation
+-- ORDER BY clause sorts query results in ascending (ASC) or descending (DESC) order.
 
 USE company;
 
 -- ============================================
--- 1. LIKE OPERATOR: Basic Pattern Matching
+-- 1. BASIC ORDER BY: Single Column ASC (Default)
 -- ============================================
--- '%' wildcard: Zero or more characters
--- '_' wildcard: Exactly one character
--- Case-insensitive by default in MySQL
+-- Sort employees by first name (ascending - default)
+SELECT first_name, salary FROM employees ORDER BY first_name;
 
-SELECT * FROM employees WHERE first_name LIKE 'J%';
-
--- ============================================
--- 2. PATTERN MATCHING: Starts With
--- ============================================
--- Find all employees whose first name starts with 'J'
-SELECT first_name FROM employees WHERE first_name LIKE 'J%';
-
--- Find all employees whose last name starts with 'D'
-SELECT first_name, last_name FROM employees WHERE last_name LIKE 'D%';
-
--- Find all emails starting with 'john'
-SELECT email FROM employees WHERE email LIKE 'john%';
+-- Explicit ASC (same result)
+SELECT first_name, salary FROM employees ORDER BY first_name ASC;
 
 -- ============================================
--- 3. PATTERN MATCHING: Ends With
+-- 2. ORDER BY: Descending Order (DESC)
 -- ============================================
--- Find all employees whose last name ends with 'son'
-SELECT first_name, last_name FROM employees WHERE last_name LIKE '%son';
+-- Sort employees by salary (highest to lowest)
+SELECT first_name, salary FROM employees ORDER BY salary DESC;
 
--- Find all emails ending with '.com'
-SELECT email FROM employees WHERE email LIKE '%.com';
-
--- Find all departments ending with 's'
-SELECT DISTINCT department FROM employees WHERE department LIKE '%s';
+-- Sort by last name descending
+SELECT first_name, last_name FROM employees ORDER BY last_name DESC;
 
 -- ============================================
--- 4. PATTERN MATCHING: Contains (Middle)
+-- 3. ORDER BY: Multiple Columns
 -- ============================================
--- Find all employees whose first name contains 'oh'
-SELECT first_name FROM employees WHERE first_name LIKE '%oh%';
+-- Sort by department (ASC), then by salary (DESC) within each department
+SELECT first_name, department, salary FROM employees
+ORDER BY department ASC, salary DESC;
 
--- Find all emails containing 'email'
-SELECT email FROM employees WHERE email LIKE '%email%';
-
--- ============================================
--- 5. SINGLE CHARACTER WILDCARD: _
--- ============================================
--- Exactly one character in the position
--- '_' represents exactly one character (any character)
-
--- Find names of length 4: B_b matches 'Bob'
-SELECT first_name FROM employees WHERE first_name LIKE 'B_b';
-
--- Find names starting with 'J' and having 4 characters: J_h_ would match 'John'
-SELECT first_name FROM employees WHERE first_name LIKE 'J___';
-
--- Find emails with format: xxx@email.com (where xxx is 3-4 chars)
-SELECT email FROM employees WHERE email LIKE '____%@email.com';
+-- Sort by salary (DESC), then by first name (ASC)
+SELECT first_name, salary FROM employees
+ORDER BY salary DESC, first_name ASC;
 
 -- ============================================
--- 6. COMBINING WILDCARDS
+-- 4. ORDER BY: Using Column Position
 -- ============================================
--- Name with 'a' as second character
-SELECT first_name FROM employees WHERE first_name LIKE '_a%';
+-- Sort by second column in SELECT list (salary)
+SELECT first_name, salary, department FROM employees ORDER BY 2 DESC;
 
--- Email with 'j' somewhere and '.com' at end
-SELECT email FROM employees WHERE email LIKE '%j%@%.com';
-
--- ============================================
--- 7. NOT LIKE: Negative Pattern Matching
--- ============================================
--- Employees whose first name does NOT start with 'J'
-SELECT first_name FROM employees WHERE first_name NOT LIKE 'J%';
-
--- Employees not in IT department
-SELECT first_name, department FROM employees WHERE department NOT LIKE '%IT%';
+-- Sort by first column, then third column
+SELECT first_name, salary, department FROM employees ORDER BY 1 ASC, 3 ASC;
 
 -- ============================================
--- 8. CASE-SENSITIVE PATTERN MATCHING
+-- 5. ORDER BY: Using Column Alias
 -- ============================================
--- By default LIKE is case-insensitive
-SELECT first_name FROM employees WHERE first_name LIKE 'john';  -- Matches 'John'
-
--- For case-sensitive matching, use BINARY
-SELECT first_name FROM employees WHERE first_name LIKE BINARY 'john';  -- Matches only 'john'
-
--- ============================================
--- 9. ESCAPING SPECIAL CHARACTERS
--- ============================================
--- If pattern contains % or _, escape with backslash
-
--- Find product names containing '%' character
--- SELECT product_name FROM products WHERE product_name LIKE '%\%%' ESCAPE '\';
-
--- Find names with underscore
--- SELECT name FROM users WHERE name LIKE '%\__%' ESCAPE '\';
-
--- ============================================
--- 10. STRING FUNCTIONS
--- ============================================
-
--- LENGTH: Get string length
-SELECT first_name, LENGTH(first_name) AS name_length FROM employees;
-
--- UPPER: Convert to uppercase
-SELECT UPPER(first_name) AS uppercase_name FROM employees;
-
--- LOWER: Convert to lowercase
-SELECT LOWER(first_name) AS lowercase_name FROM employees;
-
--- SUBSTRING: Extract portion of string
-SELECT first_name, SUBSTRING(first_name, 1, 3) AS first_three FROM employees;
-
--- CONCAT: Combine strings
-SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM employees;
-
--- CONCAT_WS: Concatenate with separator
-SELECT CONCAT_WS(' - ', first_name, last_name, email) FROM employees;
-
--- TRIM: Remove leading/trailing spaces
-SELECT TRIM('  John  ') AS trimmed_name;
-
--- REPLACE: Replace part of string
-SELECT first_name, REPLACE(first_name, 'o', '0') AS replaced FROM employees;
-
--- REVERSE: Reverse string
-SELECT REVERSE(first_name) AS reversed FROM employees;
-
--- ============================================
--- 11. COMBINING PATTERN MATCHING WITH FUNCTIONS
--- ============================================
-
--- Find employees with first name starting with J (case-insensitive)
-SELECT * FROM employees WHERE LOWER(first_name) LIKE 'j%';
-
--- Find employees whose email contains first name
-SELECT * FROM employees 
-WHERE email LIKE CONCAT('%', LOWER(first_name), '%');
-
--- Find long first names (more than 5 characters) starting with 'A'
-SELECT first_name FROM employees 
-WHERE first_name LIKE 'A%' AND LENGTH(first_name) > 5;
-
--- ============================================
--- 12. PRACTICAL EXAMPLES
--- ============================================
-
--- Example 1: Search for employees by partial name
-SELECT * FROM employees
-WHERE first_name LIKE '%ar%' OR last_name LIKE '%ar%';
-
--- Example 2: Find invalid emails (missing domain)
-SELECT email FROM employees
-WHERE email NOT LIKE '%@%.%';
-
--- Example 3: Find employees from specific cities (based on email domain)
-SELECT first_name, email
+-- Sort by calculated column (annual salary)
+SELECT 
+    first_name,
+    salary,
+    salary * 12 AS annual_salary
 FROM employees
-WHERE email LIKE '%@gmail.com' OR email LIKE '%@yahoo.com';
+ORDER BY annual_salary DESC;
 
--- Example 4: Department search
-SELECT DISTINCT department FROM employees
-WHERE department LIKE 'S%' OR department LIKE '%T%';
-
--- Example 5: Complex search - multi-criteria
-SELECT first_name, email, salary
+-- Sort by aliased columns
+SELECT 
+    first_name AS name,
+    salary AS monthly_pay,
+    salary * 12 AS annual_salary
 FROM employees
-WHERE (first_name LIKE 'J%' OR last_name LIKE '%son')
-  AND salary > 65000;
+ORDER BY annual_salary DESC;
 
 -- ============================================
--- 13. PERFORMANCE CONSIDERATIONS
+-- 6. ORDER BY: String/Text Columns
 -- ============================================
--- - LIKE with leading wildcard (e.g., '%name') is slower - avoid if possible
--- - LIKE with starting wildcard (e.g., 'name%') is faster - uses indexes
--- - Use LIKE only when pattern matching is needed
--- - For exact matches, use '=' instead of LIKE
--- - Index considerations: Create indexes on columns frequently searched with LIKE
+-- Alphabetical sort (A-Z)
+SELECT first_name FROM employees ORDER BY first_name ASC;
+
+-- Reverse alphabetical (Z-A)
+SELECT first_name FROM employees ORDER BY first_name DESC;
+
+-- Sort by length of name
+SELECT first_name, LENGTH(first_name) AS name_length FROM employees
+ORDER BY LENGTH(first_name) DESC;
+
+-- ============================================
+-- 7. ORDER BY: Date Columns
+-- ============================================
+-- Newest hires first
+SELECT first_name, hire_date FROM employees ORDER BY hire_date DESC;
+
+-- Oldest hires first
+SELECT first_name, hire_date FROM employees ORDER BY hire_date ASC;
+
+-- Order by years of service (newest employees first)
+SELECT first_name, hire_date,
+       YEAR(CURDATE()) - YEAR(hire_date) AS years_of_service
+FROM employees
+ORDER BY hire_date DESC;
+
+-- ============================================
+-- 8. ORDER BY: Numeric Columns
+-- ============================================
+-- Highest salary first
+SELECT first_name, salary FROM employees ORDER BY salary DESC;
+
+-- Lowest salary first
+SELECT first_name, salary FROM employees ORDER BY salary ASC;
+
+-- ============================================
+-- 9. ORDER BY: NULL VALUES
+-- ============================================
+-- In MySQL, NULL values are sorted first in ASC, last in DESC
+SELECT first_name, email FROM employees ORDER BY email ASC;
+-- NULLs appear first
+
+SELECT first_name, email FROM employees ORDER BY email DESC;
+-- NULLs appear last
+
+-- ============================================
+-- 10. ORDER BY: WITH WHERE CLAUSE
+-- ============================================
+-- Filter first, then sort
+SELECT first_name, salary, department FROM employees
+WHERE salary > 65000
+ORDER BY salary DESC;
+
+-- Get IT department employees, sorted by name
+SELECT first_name, last_name, salary FROM employees
+WHERE department = 'IT'
+ORDER BY first_name ASC;
+
+-- ============================================
+-- 11. ORDER BY: LIMIT for Top/Bottom Results
+-- ============================================
+-- Top 5 highest paid employees
+SELECT first_name, salary FROM employees
+ORDER BY salary DESC
+LIMIT 5;
+
+-- Top 3 employees by hire date (newest)
+SELECT first_name, hire_date FROM employees
+ORDER BY hire_date DESC
+LIMIT 3;
+
+-- Lowest 3 paid employees
+SELECT first_name, salary FROM employees
+ORDER BY salary ASC
+LIMIT 3;
+
+-- ============================================
+-- 12. ORDER BY: OFFSET for Pagination
+-- ============================================
+-- Skip first 2 rows, get next 3 rows
+SELECT first_name, salary FROM employees
+ORDER BY salary DESC
+LIMIT 3 OFFSET 2;
+
+-- Alternative syntax: LIMIT offset, count
+SELECT first_name, salary FROM employees
+ORDER BY salary DESC
+LIMIT 2, 3;   -- Skip 2, get 3
+
+-- ============================================
+-- 13. ORDER BY: CASE for Custom Sorting
+-- ============================================
+-- Sort by custom priority (Sales first, then IT, then HR)
+SELECT first_name, department FROM employees
+ORDER BY CASE 
+    WHEN department = 'Sales' THEN 1
+    WHEN department = 'IT' THEN 2
+    WHEN department = 'HR' THEN 3
+    ELSE 4
+END;
+
+-- ============================================
+-- 14. ORDER BY: Mathematical Expressions
+-- ============================================
+-- Sort by absolute difference from average salary
+SELECT first_name, salary FROM employees
+ORDER BY ABS(salary - (SELECT AVG(salary) FROM employees)) ASC;
+
+-- Sort by calculated bonus amount
+SELECT first_name, salary,
+       salary * 0.1 AS bonus_10_percent
+FROM employees
+ORDER BY salary * 0.1 DESC;
+
+-- ============================================
+-- 15. PRACTICAL EXAMPLES
+-- ============================================
+
+-- Example 1: Employee Salary Report
+SELECT 
+    first_name,
+    department,
+    salary,
+    salary * 12 AS annual_salary
+FROM employees
+ORDER BY department ASC, salary DESC;
+
+-- Example 2: Hiring Timeline
+SELECT 
+    first_name,
+    hire_date,
+    YEAR(CURDATE()) - YEAR(hire_date) AS years_employed
+FROM employees
+ORDER BY hire_date ASC;
+
+-- Example 3: Performance Ranking
+SELECT 
+    first_name,
+    salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Example 4: Multi-level Sort
+SELECT 
+    first_name,
+    department,
+    salary,
+    email
+FROM employees
+WHERE salary > 60000
+ORDER BY department ASC, salary DESC, first_name ASC;
+
+-- ============================================
+-- 16. ORDER BY: Execution and Performance
+-- ============================================
+-- SQL execution order:
+-- 1. FROM clause
+-- 2. WHERE clause
+-- 3. SELECT clause
+-- 4. ORDER BY clause  <-- Applied last
+-- 5. LIMIT clause
+
+-- Therefore:
+-- - Can't use WHERE on aliased columns
+-- - Can use ORDER BY on aliased columns
+-- - ORDER BY happens AFTER SELECT
+
+-- ============================================
+-- 17. BEST PRACTICES
+-- ============================================
+-- - Always specify ASC or DESC explicitly for clarity
+-- - Use column names rather than positions (more maintainable)
+-- - Limit large ORDER BY operations for performance
+-- - Create indexes on frequently ordered columns
+-- - Use ORDER BY with LIMIT for \"Top N\" queries
+-- - Consider NULL behavior when sorting

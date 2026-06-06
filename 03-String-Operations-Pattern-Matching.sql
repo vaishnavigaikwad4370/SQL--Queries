@@ -1,193 +1,167 @@
 -- ============================================
 -- Chapter 1: Basic Query Components
--- 02. The Where Clause
+-- 03. The From Clause
 -- ============================================
--- The WHERE clause filters rows based on conditions.
--- Only rows that satisfy the condition are returned.
+-- The FROM clause specifies which table(s) to query.
+-- It also handles Cartesian Product (cross joins) when multiple tables are listed.
 
 USE company;
 
 -- ============================================
--- 1. COMPARISON PREDICATES
+-- 1. SINGLE TABLE QUERY (Most Common)
 -- ============================================
--- Equal to
-SELECT * FROM employees WHERE department = 'Sales';
+SELECT * FROM employees;
 
--- Not equal to
-SELECT * FROM employees WHERE department != 'IT';
--- Alternative: WHERE department <> 'IT';
+SELECT first_name, salary FROM employees;
 
--- Greater than
-SELECT * FROM employees WHERE salary > 70000;
-
--- Less than
-SELECT * FROM employees WHERE salary < 70000;
-
--- Greater than or equal
-SELECT * FROM employees WHERE salary >= 70000;
-
--- Less than or equal
-SELECT * FROM employees WHERE salary <= 70000;
+SELECT emp_id, first_name, salary FROM employees
+WHERE salary > 70000;
 
 -- ============================================
--- 2. LOGICAL CONNECTIVES: AND
+-- 2. CARTESIAN PRODUCT: FROM Multiple Tables
 -- ============================================
--- All conditions must be true (AND)
-SELECT * FROM employees
-WHERE salary > 70000 AND department = 'Sales';
+-- When you list multiple tables in FROM without JOIN conditions,
+-- every row from table1 is combined with every row from table2.
+-- Result: (rows_in_table1) * (rows_in_table2)
 
-SELECT * FROM employees
-WHERE salary > 60000 AND salary < 80000;
+-- Setup: Create a second table for examples
+CREATE TABLE IF NOT EXISTS departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50),
+    location VARCHAR(50)
+);
 
-SELECT * FROM employees
-WHERE department = 'IT' AND salary >= 70000;
+INSERT INTO departments (dept_id, dept_name, location) VALUES
+(1, 'Sales', 'New York'),
+(2, 'IT', 'San Francisco'),
+(3, 'HR', 'Boston');
 
--- ============================================
--- 3. LOGICAL CONNECTIVES: OR
--- ============================================
--- At least one condition must be true (OR)
-SELECT * FROM employees
-WHERE department = 'Sales' OR department = 'IT';
-
-SELECT * FROM employees
-WHERE salary < 60000 OR salary > 80000;
-
-SELECT * FROM employees
-WHERE first_name = 'John' OR first_name = 'Jane';
+-- Cartesian Product: Combine every employee with every department
+-- This produces many rows (6 employees * 3 departments = 18 rows)
+SELECT e.emp_id, e.first_name, d.dept_id, d.dept_name
+FROM employees e, departments d;
 
 -- ============================================
--- 4. LOGICAL CONNECTIVES: NOT
+-- 3. TABLE ALIASES (Shortening Table Names)
 -- ============================================
--- Negate a condition (NOT)
-SELECT * FROM employees
-WHERE NOT department = 'HR';
+-- Using aliases makes queries shorter and clearer
+SELECT e.emp_id, e.first_name, e.salary
+FROM employees AS e;
 
-SELECT * FROM employees
-WHERE NOT (salary < 70000);   -- salary >= 70000
+-- Alias without AS keyword (also valid)
+SELECT e.emp_id, e.first_name, e.salary
+FROM employees e;
 
-SELECT * FROM employees
-WHERE NOT (department = 'IT' AND salary > 75000);
-
--- ============================================
--- 5. COMBINING AND, OR, NOT (with Parentheses)
--- ============================================
--- (A AND B) OR C
-SELECT * FROM employees
-WHERE (department = 'Sales' AND salary > 70000) 
-   OR (department = 'IT' AND salary > 75000);
-
--- A AND (B OR C)
-SELECT * FROM employees
-WHERE salary > 70000 AND (department = 'IT' OR department = 'HR');
-
--- NOT (A AND B)
-SELECT * FROM employees
-WHERE NOT (department = 'Sales' AND salary < 70000);
+-- Useful with long table names
+SELECT emp.emp_id, emp.first_name, dept.dept_name
+FROM employees emp, departments dept;
 
 -- ============================================
--- 6. BETWEEN: Range Filter
+-- 4. COLUMN ALIASES IN FROM CLAUSE
 -- ============================================
--- Inclusive range (salary between 60000 and 80000)
-SELECT * FROM employees
-WHERE salary BETWEEN 60000 AND 80000;
-
--- Outside range (using NOT BETWEEN)
-SELECT * FROM employees
-WHERE salary NOT BETWEEN 60000 AND 80000;
-
--- Date range
-SELECT * FROM employees
-WHERE hire_date BETWEEN '2022-01-01' AND '2023-06-30';
+SELECT 
+    e.emp_id AS 'Employee ID',
+    e.first_name AS 'Name',
+    e.salary AS 'Salary'
+FROM employees e;
 
 -- ============================================
--- 7. IN: Set Membership
+-- 5. MULTIPLE TABLES WITH CONDITIONS
 -- ============================================
--- Match any value in the list
-SELECT * FROM employees
-WHERE department IN ('Sales', 'IT', 'HR');
-
--- Not in any value
-SELECT * FROM employees
-WHERE department NOT IN ('Sales', 'IT');
-
--- IN with numbers
-SELECT * FROM employees
-WHERE emp_id IN (1, 3, 5);
+-- Using FROM with multiple tables but only relevant rows
+SELECT e.first_name, e.salary, d.dept_name
+FROM employees e, departments d
+WHERE e.department = d.dept_name;
 
 -- ============================================
--- 8. LIKE: Pattern Matching
+-- 6. FILTERING WITH FROM
 -- ============================================
--- '%' wildcard: zero or more characters
--- '_' wildcard: exactly one character
-
--- Starts with 'J'
-SELECT * FROM employees
-WHERE first_name LIKE 'J%';
-
--- Ends with 'n'
-SELECT * FROM employees
-WHERE last_name LIKE '%n';
-
--- Contains 'oh'
-SELECT * FROM employees
-WHERE first_name LIKE '%oh%';
-
--- Single character wildcard (e.g., B_b matches 'Bob')
-SELECT * FROM employees
-WHERE first_name LIKE 'B_b';
-
--- Case insensitive (LIKE is case-insensitive in MySQL by default)
-SELECT * FROM employees
-WHERE first_name LIKE 'john';  -- Matches 'John'
+-- Combine multiple tables and filter results
+SELECT e.first_name, e.salary, d.location
+FROM employees e, departments d
+WHERE e.department = d.dept_name
+  AND e.salary > 70000;
 
 -- ============================================
--- 9. IS NULL AND IS NOT NULL
+-- 7. DERIVED TABLES (Subquery in FROM Clause)
 -- ============================================
--- Check for NULL values
-SELECT * FROM employees
-WHERE email IS NULL;
-
--- Check for non-NULL values
-SELECT * FROM employees
-WHERE email IS NOT NULL;
-
--- Combining with other conditions
-SELECT * FROM employees
-WHERE department IS NOT NULL AND salary > 70000;
+-- Use a SELECT result as a temporary table
+SELECT emp_id, full_name, salary
+FROM (
+    SELECT emp_id, CONCAT(first_name, ' ', last_name) AS full_name, salary
+    FROM employees
+) AS emp_derived
+WHERE salary > 70000;
 
 -- ============================================
--- 10. COMPLEX WHERE CLAUSE EXAMPLES
+-- 8. FROM WITH ORDER BY (Introduced Here)
 -- ============================================
--- Find all employees in Sales or IT with salary > 65000
-SELECT * FROM employees
-WHERE (department = 'Sales' OR department = 'IT')
-  AND salary > 65000;
-
--- Find employees hired after 2023-01-01 in non-HR departments
-SELECT * FROM employees
-WHERE hire_date > '2023-01-01'
-  AND department != 'HR';
-
--- Find employees not in IT or Sales earning between 60k-80k
-SELECT * FROM employees
-WHERE department NOT IN ('IT', 'Sales')
-  AND salary BETWEEN 60000 AND 80000;
-
--- Find employees whose first name starts with 'J' and salary > 75000
-SELECT * FROM employees
-WHERE first_name LIKE 'J%'
-  AND salary > 75000;
+-- Get employees from IT department, ordered by salary
+SELECT e.first_name, e.salary, e.department
+FROM employees e
+WHERE e.department = 'IT'
+ORDER BY e.salary DESC;
 
 -- ============================================
--- 11. OPERATOR PRECEDENCE
+-- 9. UNDERSTANDING EXECUTION ORDER
 -- ============================================
--- MySQL evaluates: NOT > AND > OR
--- To avoid confusion, use parentheses explicitly
+-- SQL Query Execution Order:
+-- 1. FROM: Identify tables
+-- 2. WHERE: Filter rows
+-- 3. SELECT: Choose columns
+-- 4. ORDER BY: Sort results
+-- 5. LIMIT: Restrict number of rows
 
--- Ambiguous (should use parentheses):
--- SELECT * FROM employees WHERE department = 'Sales' OR department = 'IT' AND salary > 70000;
+-- Example showing this order:
+SELECT first_name, salary
+FROM employees
+WHERE salary > 65000
+ORDER BY salary DESC
+LIMIT 3;
 
--- Clear version (with parentheses):
-SELECT * FROM employees
-WHERE department = 'Sales' 
-   OR (department = 'IT' AND salary > 70000);
+-- This query:
+-- 1. Looks at employees table
+-- 2. Filters to salary > 65000
+-- 3. Selects first_name and salary
+-- 4. Sorts by salary in descending order
+-- 5. Returns top 3 rows
+
+-- ============================================
+-- 10. PRACTICAL EXAMPLES
+-- ============================================
+
+-- Example 1: Simple query from one table
+SELECT emp_id, first_name, email
+FROM employees;
+
+-- Example 2: Query with filtering
+SELECT first_name, salary, department
+FROM employees
+WHERE department = 'Sales';
+
+-- Example 3: Multiple tables with relationship
+SELECT 
+    e.first_name,
+    e.salary,
+    d.dept_name,
+    d.location
+FROM employees e, departments d
+WHERE e.department = d.dept_name;
+
+-- Example 4: Using derived table
+SELECT 
+    avg_salary_by_dept
+FROM (
+    SELECT AVG(salary) AS avg_salary_by_dept
+    FROM employees
+) AS salary_stats;
+
+-- ============================================
+-- 11. IMPORTANT NOTES
+-- ============================================
+-- - FROM clause always comes after SELECT syntax but is evaluated first
+-- - Table aliases make queries more readable
+-- - Multiple tables without conditions create Cartesian Products (usually not desired)
+-- - Use proper JOIN syntax instead of Cartesian Product (covered in Chapter 3)
+-- - Derived tables must have aliases
+-- - Column names should be unambiguous when using multiple tables

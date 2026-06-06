@@ -1,148 +1,182 @@
 -- ============================================
 -- Chapter 1: Additional Base Operations
--- 01. The Rename Operation (AS Clause)
+-- 02. Self Join Queries
 -- ============================================
--- The RENAME operation (AS clause) creates aliases for columns and tables.
--- This improves readability and allows temporary renaming without modifying the database.
+-- A SELF JOIN is when a table is joined with itself.
+-- This is useful for comparing rows within the same table (e.g., finding reporting relationships).
 
 USE company;
 
--- ============================================
--- 1. COLUMN ALIASES (Renaming Columns in Output)
--- ============================================
--- Using AS keyword (explicit)
-SELECT first_name AS 'First Name', last_name AS 'Last Name'
-FROM employees;
+-- Setup: Create employees table with manager information
+CREATE TABLE IF NOT EXISTS employees_with_mgr (
+    emp_id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10,2),
+    manager_id INT,
+    FOREIGN KEY (manager_id) REFERENCES employees_with_mgr(emp_id)
+);
 
--- Without AS keyword (implicit)
-SELECT first_name 'First Name', last_name 'Last Name'
-FROM employees;
+INSERT INTO employees_with_mgr VALUES
+(1, 'Alice', 'Smith', 90000, NULL),           -- CEO, no manager
+(2, 'Bob', 'Johnson', 75000, 1),              -- Reports to Alice
+(3, 'Charlie', 'Brown', 70000, 1),            -- Reports to Alice
+(4, 'Diana', 'Davis', 65000, 2),              -- Reports to Bob
+(5, 'Eve', 'Wilson', 62000, 2),               -- Reports to Bob
+(6, 'Frank', 'Miller', 68000, 3);             -- Reports to Charlie
 
--- With or without quotes
+-- ============================================
+-- 1. BASIC SELF JOIN: Employee and Manager
+-- ============================================
+-- Find each employee and their manager's name
 SELECT 
-    first_name FirstName,
-    last_name LastName,
-    salary MonthlySalary
-FROM employees;
+    e.first_name AS 'Employee Name',
+    e.salary AS 'Employee Salary',
+    m.first_name AS 'Manager Name',
+    m.salary AS 'Manager Salary'
+FROM employees_with_mgr e
+JOIN employees_with_mgr m ON e.manager_id = m.emp_id;
 
 -- ============================================
--- 2. TABLE ALIASES (Renaming Tables in Query)
+-- 2. SELF JOIN WITH LEFT JOIN (Include Employees with No Manager)
 -- ============================================
--- Short alias
-SELECT e.emp_id, e.first_name, e.salary
-FROM employees e;
-
--- Longer alias
-SELECT emp.emp_id, emp.first_name, emp.salary
-FROM employees emp;
-
--- ============================================
--- 3. RENAMING WITH EXPRESSIONS
--- ============================================
--- Arithmetic expressions with aliases
+-- Include employees who have no manager (top-level)
 SELECT 
-    first_name,
-    salary,
-    salary * 12 AS annual_salary,
-    salary * 1.1 AS new_salary_after_raise
-FROM employees;
+    e.first_name AS 'Employee',
+    COALESCE(m.first_name, 'None (CEO)') AS 'Manager'
+FROM employees_with_mgr e
+LEFT JOIN employees_with_mgr m ON e.manager_id = m.emp_id;
 
--- String operations with aliases
+-- ============================================
+-- 3. SELF JOIN: Comparing Two Instances
+-- ============================================
+-- Find pairs of employees in the same department with similar salaries
+-- First, add department to employees table
+ALTER TABLE employees_with_mgr
+ADD COLUMN department VARCHAR(50) DEFAULT 'General';
+
+-- Update departments for examples
+UPDATE employees_with_mgr SET department = 'Sales' WHERE emp_id IN (1, 2, 3);
+UPDATE employees_with_mgr SET department = 'IT' WHERE emp_id IN (4, 5, 6);
+
+-- Find employees earning similar salaries in the same department
 SELECT 
-    CONCAT(first_name, ' ', last_name) AS full_name,
-    email AS email_address
-FROM employees;
+    e1.first_name AS 'Employee 1',
+    e1.salary AS 'Salary 1',
+    e2.first_name AS 'Employee 2',
+    e2.salary AS 'Salary 2',
+    e1.department AS 'Department'
+FROM employees_with_mgr e1
+JOIN employees_with_mgr e2 
+    ON e1.department = e2.department 
+    AND e1.emp_id < e2.emp_id
+    AND ABS(e1.salary - e2.salary) < 5000;
 
 -- ============================================
--- 4. RENAMING IN DERIVED TABLES
+-- 4. SELF JOIN: Finding Duplicates
 -- ============================================
--- The derived table and its columns must have aliases
+-- Example: Find employees with the same last name (potential relatives)
 SELECT 
-    emp_id,
-    full_name,
-    annual_salary
-FROM (
-    SELECT 
-        emp_id,
-        CONCAT(first_name, ' ', last_name) AS full_name,
-        salary * 12 AS annual_salary
-    FROM employees
-) AS emp_summary;
+    e1.first_name AS 'First Name 1',
+    e1.last_name,
+    e2.first_name AS 'First Name 2'
+FROM employees_with_mgr e1
+JOIN employees_with_mgr e2 
+    ON e1.last_name = e2.last_name
+    AND e1.emp_id < e2.emp_id;
 
 -- ============================================
--- 5. MULTIPLE ALIASES IN ONE QUERY
+-- 5. MULTIPLE LEVELS: Employee -> Manager -> Manager's Manager
 -- ============================================
+-- Three-level hierarchy
 SELECT 
-    e.emp_id AS 'Employee ID',
-    CONCAT(e.first_name, ' ', e.last_name) AS 'Full Name',
-    e.salary AS 'Monthly Salary',
-    ROUND(e.salary * 1.15, 2) AS 'With 15% Bonus',
-    e.department AS 'Dept',
-    YEAR(CURDATE()) - YEAR(e.hire_date) AS 'Years of Service'
-FROM employees e;
+    e.first_name AS 'Employee',
+    m1.first_name AS 'Direct Manager',
+    m2.first_name AS 'Manager\'s Manager'
+FROM employees_with_mgr e
+LEFT JOIN employees_with_mgr m1 ON e.manager_id = m1.emp_id
+LEFT JOIN employees_with_mgr m2 ON m1.manager_id = m2.emp_id;
 
 -- ============================================
--- 6. USING ALIASES IN WHERE AND ORDER BY
+-- 6. SELF JOIN WITH AGGREGATION
 -- ============================================
--- Note: Cannot use aliases in WHERE clause (evaluated before SELECT)
--- But CAN use aliases in ORDER BY (evaluated after SELECT)
+-- Average salary by department, comparing with manager's average
+-- (Showing the concept of complex self joins)
 
--- This WORKS - alias used in ORDER BY
+-- ============================================
+-- 7. SELF JOIN: Finding Parent-Child Records
+-- ============================================
+-- Example with categories and subcategories
+CREATE TABLE IF NOT EXISTS categories (
+    category_id INT PRIMARY KEY,
+    category_name VARCHAR(50),
+    parent_category_id INT,
+    FOREIGN KEY (parent_category_id) REFERENCES categories(category_id)
+);
+
+INSERT INTO categories VALUES
+(1, 'Electronics', NULL),
+(2, 'Computers', 1),
+(3, 'Laptops', 2),
+(4, 'Desktops', 2),
+(5, 'Phones', 1),
+(6, 'Smartphones', 5);
+
+-- Find subcategories with their parent category
 SELECT 
-    first_name,
-    salary * 12 AS annual_salary
-FROM employees
-ORDER BY annual_salary DESC;
-
--- This FAILS - alias used in WHERE (if unsupported in MySQL version)
--- SELECT first_name, salary * 12 AS annual_salary
--- FROM employees
--- WHERE annual_salary > 900000;   -- Will error
-
--- Correct way to filter by expression:
-SELECT 
-    first_name,
-    salary * 12 AS annual_salary
-FROM employees
-WHERE salary * 12 > 900000;
+    c.category_name AS 'Subcategory',
+    p.category_name AS 'Parent Category'
+FROM categories c
+LEFT JOIN categories p ON c.parent_category_id = p.category_id;
 
 -- ============================================
--- 7. PRACTICAL EXAMPLES
+-- 8. SELF JOIN: Organizational Chart
 -- ============================================
-
--- Example 1: Employee Report with Aliases
+-- Create a simple organizational hierarchy display
 SELECT 
-    e.emp_id AS 'ID',
-    CONCAT(e.first_name, ' ', e.last_name) AS 'Employee Name',
-    e.email AS 'Contact Email',
-    e.salary AS 'Monthly Pay',
-    ROUND(e.salary * 12, 2) AS 'Annual Salary',
-    e.department AS 'Department'
-FROM employees e
-ORDER BY 'Annual Salary' DESC;
+    CONCAT(REPEAT('  ', 0), e.first_name) AS 'Organizational Hierarchy'
+FROM employees_with_mgr e
+WHERE e.manager_id IS NULL
 
--- Example 2: Salary Analysis with Aliases
-SELECT 
-    first_name,
-    salary AS current_salary,
-    ROUND(salary * 1.1, 2) AS salary_10pct_raise,
-    ROUND(salary * 0.05, 2) AS bonus_5pct,
-    ROUND((salary * 1.1) + (salary * 0.05), 2) AS total_compensation
-FROM employees;
+UNION ALL
 
--- Example 3: Date Calculations with Aliases
 SELECT 
-    first_name,
-    hire_date,
-    YEAR(CURDATE()) - YEAR(hire_date) AS years_employed,
-    DATEDIFF(CURDATE(), hire_date) AS days_employed
-FROM employees;
+    CONCAT(REPEAT('  ', 1), e.first_name)
+FROM employees_with_mgr e
+WHERE e.manager_id IS NOT NULL;
 
 -- ============================================
--- 8. BEST PRACTICES FOR ALIASES
+-- 9. SELF JOIN: Finding Related Records
 -- ============================================
--- Use meaningful, descriptive aliases
--- Use quotes for aliases with spaces
--- Use table aliases to disambiguate columns in multi-table queries
--- Avoid using column names as aliases (confusing)
--- Keep aliases short but clear
+-- Example: Students in same year
+CREATE TABLE IF NOT EXISTS students (
+    student_id INT PRIMARY KEY,
+    student_name VARCHAR(50),
+    year_of_study INT
+);
+
+INSERT INTO students VALUES
+(1, 'Alice', 2),
+(2, 'Bob', 2),
+(3, 'Charlie', 3),
+(4, 'Diana', 2),
+(5, 'Eve', 3);
+
+-- Find classmates (students in same year)
+SELECT 
+    s1.student_name AS 'Student 1',
+    s2.student_name AS 'Student 2 (Classmate)',
+    s1.year_of_study AS 'Year'
+FROM students s1
+JOIN students s2 
+    ON s1.year_of_study = s2.year_of_study
+    AND s1.student_id < s2.student_id;
+
+-- ============================================
+-- 10. IMPORTANT NOTES FOR SELF JOINS
+-- ============================================
+-- - Always use table aliases (e1, e2) to distinguish the two instances
+-- - Use meaningful alias names (e.g., e and m for employee and manager)
+-- - Add conditions to avoid duplicate comparisons (e.g., e1.emp_id < e2.emp_id)
+-- - Use LEFT JOIN when some records might not have matching pairs
+-- - Self joins can be less efficient with large tables - consider indexing
