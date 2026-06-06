@@ -1,185 +1,184 @@
 -- ============================================
--- Chapter 1: Set Operations
--- 01. Union / Union All Queries
+-- Chapter 2: Advanced SQL
+-- 01. Aggregate Functions and Partitioning
+-- 01a. Basic Column Aggregations
 -- ============================================
--- UNION combines results from multiple SELECT statements
--- - UNION: Removes duplicate rows
--- - UNION ALL: Includes all rows (including duplicates)
+-- Aggregate functions compute values across multiple rows.
+-- Common functions: AVG, MIN, MAX, SUM, COUNT
 
 USE company;
 
--- Setup tables
-CREATE TABLE IF NOT EXISTS sales_employees (
-    emp_id INT,
-    name VARCHAR(50),
-    salary DECIMAL(10,2)
+-- Setup
+CREATE TABLE IF NOT EXISTS employees (
+    emp_id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10,2),
+    department VARCHAR(50),
+    hire_date DATE
 );
 
-CREATE TABLE IF NOT EXISTS it_employees (
-    emp_id INT,
-    name VARCHAR(50),
-    salary DECIMAL(10,2)
-);
-
-INSERT INTO sales_employees VALUES
-(1, 'John Doe', 75000),
-(2, 'Jane Smith', 82000),
-(3, 'Bob Johnson', 60000);
-
-INSERT INTO it_employees VALUES
-(4, 'Alice Williams', 72000),
-(5, 'Mike Brown', 68000),
-(1, 'John Doe', 75000);  -- Same person in both tables
+INSERT INTO employees VALUES
+(1, 'Alice', 'Smith', 90000, 'Management', '2021-01-15'),
+(2, 'Bob', 'Johnson', 75000, 'Sales', '2022-03-20'),
+(3, 'Charlie', 'Brown', 70000, 'Sales', '2022-06-10'),
+(4, 'Diana', 'Davis', 65000, 'HR', '2023-02-01'),
+(5, 'Eve', 'Wilson', 62000, 'IT', '2023-05-12'),
+(6, 'Frank', 'Miller', 72000, 'IT', '2023-07-01');
 
 -- ============================================
--- 1. UNION: Combine Without Duplicates
+-- 1. COUNT: Count Number of Rows
 -- ============================================
--- Get all unique employees from both departments
-SELECT name, salary FROM sales_employees
-UNION
-SELECT name, salary FROM it_employees;
+-- Count all employees
+SELECT COUNT(*) AS total_employees FROM employees;
+
+-- Count non-NULL emails (hypothetically)
+SELECT COUNT(emp_id) AS total_employees FROM employees;
+
+-- Count distinct departments
+SELECT COUNT(DISTINCT department) AS unique_departments FROM employees;
 
 -- ============================================
--- 2. UNION ALL: Combine With Duplicates
+-- 2. SUM: Sum of Column Values
 -- ============================================
--- Get all employees including duplicates
-SELECT name, salary FROM sales_employees
-UNION ALL
-SELECT name, salary FROM it_employees;
+-- Total salary of all employees
+SELECT SUM(salary) AS total_salary FROM employees;
 
--- ============================================
--- 3. UNION: Different Tables, Same Schema
--- ============================================
--- Combine employees from different years/periods
-
-CREATE TABLE IF NOT EXISTS employees_2022 (
-    emp_id INT,
-    name VARCHAR(50)
-);
-
-CREATE TABLE IF NOT EXISTS employees_2023 (
-    emp_id INT,
-    name VARCHAR(50)
-);
-
-INSERT INTO employees_2022 VALUES
-(1, 'Alice'), (2, 'Bob'), (3, 'Charlie');
-
-INSERT INTO employees_2023 VALUES
-(2, 'Bob'), (3, 'Charlie'), (4, 'Diana');
-
--- All employees from both years (no duplicates)
-SELECT name FROM employees_2022
-UNION
-SELECT name FROM employees_2023;
-
--- All employees from both years (with duplicates)
-SELECT name FROM employees_2022
-UNION ALL
-SELECT name FROM employees_2023;
+-- Total salary for a specific department
+SELECT SUM(salary) AS sales_payroll FROM employees WHERE department = 'Sales';
 
 -- ============================================
--- 4. UNION: Multiple Tables
+-- 3. AVG: Average Value
 -- ============================================
--- Combine from 3 or more tables
-SELECT name FROM employees_2022
-UNION
-SELECT name FROM employees_2023
-UNION
-SELECT name FROM sales_employees;
+-- Average salary of all employees
+SELECT AVG(salary) AS avg_salary FROM employees;
+
+-- Average salary by department (will use GROUP BY)
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
 
 -- ============================================
--- 5. UNION: With WHERE Clause
+-- 4. MIN: Minimum Value
 -- ============================================
--- High earners from both departments
-SELECT name, salary FROM sales_employees WHERE salary > 70000
-UNION
-SELECT name, salary FROM it_employees WHERE salary > 70000;
+-- Lowest salary
+SELECT MIN(salary) AS lowest_salary FROM employees;
+
+-- Earliest hire date
+SELECT MIN(hire_date) AS earliest_hire FROM employees;
+
+-- Lowest salary in IT department
+SELECT MIN(salary) AS lowest_it_salary FROM employees WHERE department = 'IT';
 
 -- ============================================
--- 6. UNION: With ORDER BY
+-- 5. MAX: Maximum Value
 -- ============================================
--- Order the combined results
-SELECT name FROM sales_employees
-UNION
-SELECT name FROM it_employees
-ORDER BY name ASC;
+-- Highest salary
+SELECT MAX(salary) AS highest_salary FROM employees;
 
--- Salary ranking of all unique employees
-SELECT name, salary FROM sales_employees
-UNION
-SELECT name, salary FROM it_employees
-ORDER BY salary DESC;
+-- Latest hire date
+SELECT MAX(hire_date) AS latest_hire FROM employees;
+
+-- Highest salary in Sales
+SELECT MAX(salary) AS highest_sales_salary FROM employees WHERE department = 'Sales';
 
 -- ============================================
--- 7. UNION: With Aliases
+-- 6. COMBINING MULTIPLE AGGREGATES
 -- ============================================
--- Add descriptive columns
-SELECT name AS employee_name, salary, 'Sales' AS department FROM sales_employees
-UNION
-SELECT name AS employee_name, salary, 'IT' AS department FROM it_employees
-ORDER BY employee_name;
+-- Multiple aggregates in one query
+SELECT 
+    COUNT(*) AS employee_count,
+    SUM(salary) AS total_salary,
+    AVG(salary) AS average_salary,
+    MIN(salary) AS lowest_salary,
+    MAX(salary) AS highest_salary
+FROM employees;
+
+-- With WHERE clause
+SELECT 
+    COUNT(*) AS it_employees,
+    AVG(salary) AS avg_it_salary,
+    SUM(salary) AS total_it_salary
+FROM employees
+WHERE department = 'IT';
 
 -- ============================================
--- 8. UNION: Rules and Constraints
+-- 7. AGGREGATE WITH WHERE CLAUSE
 -- ============================================
--- Rules:
--- 1. Same number of columns in both SELECT statements
--- 2. Corresponding columns must have compatible data types
--- 3. Column names from first SELECT are used in result
--- 4. ORDER BY applies to entire result set
+-- Filter before aggregating
+SELECT 
+    COUNT(*) AS senior_employees,
+    AVG(salary) AS avg_senior_salary
+FROM employees
+WHERE salary > 70000;
 
--- Example of compatible data types:
-SELECT emp_id, name FROM sales_employees
-UNION
-SELECT emp_id, CONCAT('Mr. ', name) FROM it_employees;
+-- Employees hired after 2022
+SELECT 
+    COUNT(*) AS recent_hires,
+    AVG(salary) AS avg_recent_salary
+FROM employees
+WHERE YEAR(hire_date) >= 2023;
 
 -- ============================================
--- 9. UNION ALL: Performance Advantage
+-- 8. AGGREGATE WITH DISTINCT
 -- ============================================
--- UNION ALL is faster (no duplicate removal overhead)
--- Use when you know there are no duplicates
+-- Count unique departments
+SELECT COUNT(DISTINCT department) AS num_departments FROM employees;
 
--- This is more efficient if no duplicates expected
-SELECT name FROM sales_employees
-UNION ALL
-SELECT name FROM it_employees;
+-- Average of distinct salaries (no duplicates)
+SELECT AVG(DISTINCT salary) AS avg_distinct_salary FROM employees;
+
+-- ============================================
+-- 9. NULL HANDLING IN AGGREGATES
+-- ============================================
+-- Aggregates ignore NULL values (except COUNT(*))
+
+-- If we had NULL values:
+-- SELECT AVG(salary) FROM employees;  -- Ignores NULLs
+-- SELECT COUNT(salary) FROM employees;  -- Counts non-NULL
+-- SELECT COUNT(*) FROM employees;  -- Counts all rows
 
 -- ============================================
 -- 10. PRACTICAL EXAMPLES
 -- ============================================
 
--- Example 1: Combine customer lists from different sources
--- CREATE TABLE online_customers (id INT, name VARCHAR(50), email VARCHAR(100));
--- CREATE TABLE retail_customers (id INT, name VARCHAR(50), email VARCHAR(100));
+-- Example 1: Employee Statistics
+SELECT 
+    COUNT(*) AS 'Total Employees',
+    ROUND(AVG(salary), 2) AS 'Average Salary',
+    MIN(salary) AS 'Minimum Salary',
+    MAX(salary) AS 'Maximum Salary',
+    MAX(salary) - MIN(salary) AS 'Salary Range'
+FROM employees;
 
--- SELECT name, email FROM online_customers
--- UNION
--- SELECT name, email FROM retail_customers;
+-- Example 2: Department Summary
+SELECT 
+    COUNT(*) AS 'Employee Count',
+    SUM(salary) AS 'Total Payroll',
+    ROUND(AVG(salary), 2) AS 'Average Salary'
+FROM employees
+WHERE department = 'Sales';
 
--- Example 2: Find employees and managers (all people involved in hierarchy)
--- SELECT emp_id, first_name FROM employees
--- UNION
--- SELECT manager_id, manager_name FROM managers;
-
--- Example 3: Historical data analysis
-SELECT 'Q1 2023' AS quarter, SUM(amount) AS revenue FROM sales_2023_q1
-UNION
-SELECT 'Q2 2023' AS quarter, SUM(amount) AS revenue FROM sales_2023_q2
-UNION
-SELECT 'Q3 2023' AS quarter, SUM(amount) AS revenue FROM sales_2023_q3;
+-- Example 3: Salary Distribution
+SELECT 
+    'All Employees' AS department,
+    COUNT(*) AS count,
+    ROUND(AVG(salary), 2) AS avg_salary
+FROM employees;
 
 -- ============================================
--- 11. UNION vs JOIN
+-- 11. ROUNDING WITH AGGREGATES
 -- ============================================
--- UNION: Combine rows from multiple queries (stacking)
--- JOIN: Combine columns from multiple tables (side-by-side)
+-- Use ROUND to format monetary values
+SELECT 
+    ROUND(AVG(salary), 2) AS avg_salary,
+    ROUND(SUM(salary), 2) AS total_salary,
+    ROUND(MAX(salary), 0) AS max_salary
+FROM employees;
 
--- UNION (vertical combination):
-SELECT name FROM sales_employees
-UNION
-SELECT name FROM it_employees;
-
--- JOIN (horizontal combination):
--- SELECT s.name, i.name FROM sales_employees s
--- JOIN it_employees i ON s.emp_id = i.emp_id;
+-- ============================================
+-- 12. MATHEMATICAL OPERATIONS WITH AGGREGATES
+-- ============================================
+-- Calculate salary increases
+SELECT 
+    SUM(salary) * 1.1 AS total_with_10pct_raise,
+    ROUND(AVG(salary) * 0.05, 2) AS avg_bonus_5pct
+FROM employees;

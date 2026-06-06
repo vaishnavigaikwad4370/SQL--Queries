@@ -1,228 +1,181 @@
 -- ============================================
--- Chapter 1: Null Value Handling
--- 01. Null-Check Predicate Queries
+-- Chapter 2: Advanced SQL
+-- 03. Database Modification Commands (DML)
+-- 01. Insert Commands
 -- ============================================
--- NULL is a special value representing \"unknown\" or \"missing\" data.
--- Use IS NULL and IS NOT NULL to check for NULL values.
+-- INSERT adds new rows to a table
 
 USE company;
 
--- Setup
+-- Create sample table
 CREATE TABLE IF NOT EXISTS employees (
-    emp_id INT PRIMARY KEY,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    email VARCHAR(100),
-    phone VARCHAR(20),
-    salary DECIMAL(10,2),
-    manager_id INT,
-    department VARCHAR(50)
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    salary DECIMAL(10,2) DEFAULT 50000,
+    department VARCHAR(50),
+    hire_date DATE
 );
 
-INSERT INTO employees VALUES
-(1, 'Alice', 'Smith', 'alice@company.com', '555-0001', 90000, NULL, 'Management'),
-(2, 'Bob', 'Johnson', 'bob@company.com', NULL, 75000, 1, 'Sales'),
-(3, 'Charlie', 'Brown', NULL, '555-0003', 70000, 1, 'Sales'),
-(4, 'Diana', 'Davis', 'diana@company.com', '555-0004', 65000, 2, 'HR'),
-(5, 'Eve', 'Wilson', NULL, NULL, 62000, 2, 'IT');
+-- ============================================
+-- 1. INSERT: Single Row with All Columns
+-- ============================================
+INSERT INTO employees 
+VALUES (1, 'Alice', 'Smith', 'alice@company.com', 90000, 'Management', '2021-01-15');
 
 -- ============================================
--- 1. IS NULL: Find Records with NULL Values
+-- 2. INSERT: Single Row with Specific Columns
 -- ============================================
--- Find employees with NULL email
-SELECT * FROM employees WHERE email IS NULL;
+INSERT INTO employees (first_name, last_name, email, salary, department, hire_date)
+VALUES ('Bob', 'Johnson', 'bob@company.com', 75000, 'Sales', '2022-03-20');
 
--- Find employees with NULL phone
-SELECT first_name, last_name, phone FROM employees WHERE phone IS NULL;
-
--- Find employees with no manager (NULL manager_id)
-SELECT first_name, last_name FROM employees WHERE manager_id IS NULL;
+-- Using default values (salary will be 50000)
+INSERT INTO employees (first_name, last_name, email, department)
+VALUES ('Charlie', 'Brown', 'charlie@company.com', 'IT');
 
 -- ============================================
--- 2. IS NOT NULL: Find Records without NULL
+-- 3. INSERT: Multiple Rows
 -- ============================================
--- Find employees with valid email
-SELECT first_name, email FROM employees WHERE email IS NOT NULL;
-
--- Find employees with phone numbers
-SELECT first_name, phone FROM employees WHERE phone IS NOT NULL;
-
--- Find employees with a manager
-SELECT first_name, manager_id FROM employees WHERE manager_id IS NOT NULL;
+INSERT INTO employees (first_name, last_name, email, salary, department, hire_date) VALUES
+('Diana', 'Davis', 'diana@company.com', 65000, 'HR', '2023-02-01'),
+('Eve', 'Wilson', 'eve@company.com', 62000, 'IT', '2023-05-12'),
+('Frank', 'Miller', 'frank@company.com', 72000, 'Sales', '2023-07-01');
 
 -- ============================================
--- 3. MULTIPLE NULL CONDITIONS
+-- 4. INSERT WITH AUTO_INCREMENT
 -- ============================================
--- Find employees with both email AND phone
-SELECT first_name FROM employees
-WHERE email IS NOT NULL AND phone IS NOT NULL;
-
--- Find employees with either NULL email OR NULL phone
-SELECT first_name FROM employees
-WHERE email IS NULL OR phone IS NULL;
-
--- Find employees with no email and no phone
-SELECT first_name FROM employees
-WHERE email IS NULL AND phone IS NULL;
+-- Let the database auto-generate emp_id
+INSERT INTO employees (first_name, last_name, email, salary, department, hire_date)
+VALUES ('Grace', 'Taylor', 'grace@company.com', 68000, 'HR', '2023-08-15');
 
 -- ============================================
--- 4. NOT NULL IN WHERE CLAUSE
+-- 5. INSERT: NULL VALUES
 -- ============================================
--- Exclude NULL values from results
-SELECT first_name, department FROM employees
-WHERE department IS NOT NULL
-ORDER BY department;
-
--- Find employees with salary and department info
-SELECT first_name, salary, department FROM employees
-WHERE salary IS NOT NULL AND department IS NOT NULL;
+-- Some employees might not have email initially
+INSERT INTO employees (first_name, last_name, salary, department)
+VALUES ('Henry', 'Anderson', 71000, 'IT');
 
 -- ============================================
--- 5. NULL vs EMPTY STRING
+-- 6. INSERT: Using SELECT (Copy Data)
 -- ============================================
--- Note: NULL is different from empty string ''
+-- Copy employees from one table to another
+CREATE TABLE IF NOT EXISTS employees_backup AS
+SELECT * FROM employees WHERE 1=0;  -- Create structure only
 
--- Check for actual NULL
-SELECT * FROM employees WHERE email IS NULL;      -- NULL values
+-- Copy all employees
+INSERT INTO employees_backup
+SELECT * FROM employees;
 
--- Check for empty string (if exists)
--- SELECT * FROM employees WHERE email = '';       -- Empty strings
-
--- ============================================
--- 6. COALESCE: Handle NULL Values
--- ============================================
--- Replace NULL with alternative value
-SELECT 
-    first_name,
-    COALESCE(email, 'No email') AS email,
-    COALESCE(phone, 'No phone') AS phone
-FROM employees;
-
--- Use first non-NULL value from multiple columns
-SELECT 
-    first_name,
-    COALESCE(phone, email, 'No contact') AS contact_info
-FROM employees;
+-- Copy specific employees
+INSERT INTO employees_backup
+SELECT * FROM employees WHERE department = 'Sales';
 
 -- ============================================
--- 7. IFNULL: Alternative to COALESCE
+-- 7. INSERT: SELECT with WHERE
 -- ============================================
--- IFNULL works with exactly 2 arguments
-SELECT 
-    first_name,
-    IFNULL(email, 'N/A') AS email
-FROM employees;
+-- Create a high earners table
+CREATE TABLE IF NOT EXISTS high_earners (
+    emp_id INT,
+    name VARCHAR(100),
+    salary DECIMAL(10,2)
+);
+
+INSERT INTO high_earners
+SELECT emp_id, CONCAT(first_name, ' ', last_name), salary
+FROM employees
+WHERE salary > 70000;
 
 -- ============================================
--- 8. IF FUNCTION: Conditional NULL Handling
+-- 8. INSERT: SELECT with JOIN
 -- ============================================
--- Use IF to handle NULL differently
-SELECT 
-    first_name,
-    IF(email IS NULL, 'Missing', email) AS email_status,
-    IF(phone IS NULL, 'Not Provided', phone) AS phone_status
-FROM employees;
-
--- ============================================
--- 9. NULL IN AGGREGATES
--- ============================================
--- COUNT ignores NULL values (except COUNT(*))
-SELECT 
-    COUNT(*) AS total_employees,
-    COUNT(email) AS employees_with_email,
-    COUNT(phone) AS employees_with_phone
-FROM employees;
-
--- Find average salary (NULL values ignored)
-SELECT AVG(salary) AS average_salary FROM employees;
-
--- ============================================
--- 10. NULL SORTING
--- ============================================
--- In MySQL, NULL sorts first in ASC, last in DESC
-
--- Sort by email (NULLs appear first)
-SELECT first_name, email FROM employees ORDER BY email ASC;
-
--- Sort by email descending (NULLs appear last)
-SELECT first_name, email FROM employees ORDER BY email DESC;
-
--- Sort with NULLs last (ASC)
-SELECT first_name, email FROM employees
-ORDER BY email IS NULL, email ASC;
-
--- ============================================
--- 11. NULL IN JOINS
--- ============================================
--- Be careful with NULL in join conditions
-
-CREATE TABLE IF NOT EXISTS departments (
-    dept_id INT PRIMARY KEY,
+-- Create employee-department table
+CREATE TABLE IF NOT EXISTS emp_dept (
+    emp_id INT,
+    emp_name VARCHAR(100),
     dept_name VARCHAR(50)
 );
 
-INSERT INTO departments VALUES
-(1, 'Management'),
-(2, 'Sales'),
-(3, 'HR'),
-(4, 'IT');
-
--- Find employees with department info
-SELECT e.first_name, d.dept_name
-FROM employees e
-LEFT JOIN departments d ON e.department = d.dept_name
-WHERE e.department IS NOT NULL;
+INSERT INTO emp_dept
+SELECT e.emp_id, CONCAT(e.first_name, ' ', e.last_name), e.department
+FROM employees e;
 
 -- ============================================
--- 12. NULL IN SUBQUERIES
+-- 9. INSERT: Conditional INSERT (IGNORE)
 -- ============================================
--- Find employees without a manager
-SELECT first_name FROM employees
-WHERE manager_id IS NULL;
-
--- Find employees who are NOT managers (don't appear in manager_id)
-SELECT first_name FROM employees
-WHERE emp_id NOT IN (SELECT manager_id FROM employees WHERE manager_id IS NOT NULL);
+-- Skip inserts that would violate UNIQUE constraint
+INSERT IGNORE INTO employees (first_name, last_name, email, salary, department)
+VALUES ('Bob', 'Johnson', 'bob@company.com', 80000, 'Finance');
+-- This won't insert because email already exists
 
 -- ============================================
--- 13. PRACTICAL EXAMPLES
+-- 10. INSERT: Using DEFAULT VALUES
 -- ============================================
-
--- Example 1: Data Quality Report
-SELECT 
-    'Email' AS field,
-    COUNT(*) AS total_records,
-    COUNT(email) AS records_with_value,
-    COUNT(*) - COUNT(email) AS null_count
-FROM employees
-UNION ALL
-SELECT 
-    'Phone' AS field,
-    COUNT(*) AS total_records,
-    COUNT(phone) AS records_with_value,
-    COUNT(*) - COUNT(phone) AS null_count
-FROM employees;
-
--- Example 2: Complete Contact Info Report
-SELECT 
-    first_name,
-    COALESCE(email, 'No Email') AS email,
-    COALESCE(phone, 'No Phone') AS phone,
-    IF(email IS NOT NULL OR phone IS NOT NULL, 'Has Contact', 'No Contact Info') AS contact_status
-FROM employees;
-
--- Example 3: Hierarchical Display
-SELECT 
-    first_name,
-    COALESCE(manager_id::text, 'Top Level') AS reports_to
-FROM employees;
+-- Insert row with all defaults
+INSERT INTO employees (first_name, last_name)
+VALUES ('Iris', 'White');  -- Others use defaults
 
 -- ============================================
--- 14. IMPORTANT NOTES ON NULL
+-- 11. INSERT: Bulk Insert from File (Syntax)
 -- ============================================
--- - NULL is not equal to NULL (NULL = NULL returns UNKNOWN)
--- - NULL values are typically excluded from aggregate functions
--- - Use IS NULL and IS NOT NULL for NULL checks
--- - Never use = NULL or != NULL
--- - DISTINCT treats NULL as a value (NULL = NULL for DISTINCT)
--- - NULL behavior differs slightly across databases
+-- LOAD DATA LOCAL INFILE '/path/to/file.csv'
+-- INTO TABLE employees
+-- FIELDS TERMINATED BY ','
+-- LINES TERMINATED BY '\n'
+-- (first_name, last_name, email, salary, department, hire_date);
+
+-- ============================================
+-- 12. PRACTICAL EXAMPLES
+-- ============================================
+
+-- Example 1: Add new employees from application
+INSERT INTO employees (first_name, last_name, email, salary, department, hire_date)
+VALUES 
+('Jack', 'Thompson', 'jack@company.com', 75000, 'Sales', CURDATE()),
+('Karen', 'Martinez', 'karen@company.com', 70000, 'IT', CURDATE());
+
+-- Example 2: Archive old records
+CREATE TABLE IF NOT EXISTS archived_employees LIKE employees;
+
+INSERT INTO archived_employees
+SELECT * FROM employees
+WHERE YEAR(hire_date) < 2023;
+
+-- Example 3: Populate from another source
+INSERT INTO employees (first_name, last_name, salary, department)
+SELECT DISTINCT 
+    name,
+    'New Hire' AS last_name,
+    0 AS salary,
+    'Unassigned' AS department
+FROM temp_applicants;
+
+-- ============================================
+-- 13. INSERT: Error Handling
+-- ============================================
+-- Without IGNORE, duplicate would cause error
+-- INSERT INTO employees (first_name, last_name, email)
+-- VALUES ('Bob', 'Johnson', 'bob@company.com');
+-- ERROR: Duplicate entry
+
+-- Use IGNORE to skip errors
+INSERT IGNORE INTO employees (first_name, last_name, email)
+VALUES 
+('Bob', 'Johnson', 'bob@company.com'),  -- Skipped (duplicate)
+('Laura', 'King', 'laura@company.com');  -- Inserted
+
+-- ============================================
+-- 14. INSERT: ON DUPLICATE KEY UPDATE
+-- ============================================
+-- Update if exists, insert if not
+INSERT INTO employees (emp_id, first_name, last_name, email, salary)
+VALUES (1, 'Alice', 'Smith', 'alice.smith@company.com', 95000)
+ON DUPLICATE KEY UPDATE 
+    email = 'alice.smith@company.com',
+    salary = 95000;
+
+-- ============================================
+-- 15. VIEW RESULTS
+-- ============================================
+SELECT * FROM employees;
+SELECT COUNT(*) AS total_employees FROM employees;

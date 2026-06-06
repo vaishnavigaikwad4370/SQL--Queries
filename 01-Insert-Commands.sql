@@ -1,189 +1,200 @@
 -- ============================================
--- Chapter 1: Set Operations
--- 02. Intersect / Intersect All Queries
+-- Chapter 2: Advanced SQL
+-- 01. Aggregate Functions and Partitioning
+-- 01b. Group By Clause
 -- ============================================
--- INTERSECT returns only rows that appear in both queries.
--- MySQL doesn't have INTERSECT, but we can simulate using JOIN or subqueries.
+-- GROUP BY divides rows into groups and applies aggregates to each group.
 
 USE company;
 
 -- ============================================
--- 1. SIMULATING INTERSECT Using INNER JOIN
+-- 1. BASIC GROUP BY: Single Column
 -- ============================================
--- Find employees who appear in both sales and IT departments
+-- Count employees by department
+SELECT department, COUNT(*) AS employee_count
+FROM employees
+GROUP BY department;
 
-CREATE TABLE IF NOT EXISTS employees_sales (
-    emp_id INT,
-    name VARCHAR(50)
-);
-
-CREATE TABLE IF NOT EXISTS employees_it (
-    emp_id INT,
-    name VARCHAR(50)
-);
-
-INSERT INTO employees_sales VALUES
-(1, 'Alice'),
-(2, 'Bob'),
-(3, 'Charlie'),
-(4, 'Diana');
-
-INSERT INTO employees_it VALUES
-(2, 'Bob'),
-(4, 'Diana'),
-(5, 'Eve'),
-(6, 'Frank');
-
--- INTERSECT simulation: Find employees in BOTH tables
-SELECT DISTINCT s.name
-FROM employees_sales s
-INNER JOIN employees_it i ON s.name = i.name;
+-- Sum salaries by department
+SELECT department, SUM(salary) AS total_salary
+FROM employees
+GROUP BY department;
 
 -- ============================================
--- 2. SIMULATING INTERSECT Using EXISTS
+-- 2. GROUP BY: Multiple Columns
 -- ============================================
--- Find employees in sales table who also exist in IT table
-SELECT DISTINCT s.name
-FROM employees_sales s
-WHERE EXISTS (
-    SELECT 1 FROM employees_it i WHERE i.name = s.name
-);
-
--- ============================================
--- 3. INTERSECT: Multiple Columns
--- ============================================
--- Create tables with multiple columns
-CREATE TABLE IF NOT EXISTS product_catalog_2023 (
-    product_id INT,
-    product_name VARCHAR(50),
-    category VARCHAR(50)
-);
-
-CREATE TABLE IF NOT EXISTS inventory_2023 (
-    product_id INT,
-    product_name VARCHAR(50),
-    category VARCHAR(50)
-);
-
-INSERT INTO product_catalog_2023 VALUES
-(1, 'Laptop', 'Electronics'),
-(2, 'Phone', 'Electronics'),
-(3, 'Desk', 'Furniture');
-
-INSERT INTO inventory_2023 VALUES
-(2, 'Phone', 'Electronics'),
-(3, 'Desk', 'Furniture'),
-(4, 'Chair', 'Furniture');
-
--- Find products in both catalog and inventory
-SELECT product_id, product_name, category FROM product_catalog_2023
-INTERSECT
-SELECT product_id, product_name, category FROM inventory_2023;
-
--- MySQL simulation (since INTERSECT not available):
-SELECT DISTINCT p.product_id, p.product_name, p.category
-FROM product_catalog_2023 p
-INNER JOIN inventory_2023 i 
-    ON p.product_id = i.product_id
-    AND p.product_name = i.product_name
-    AND p.category = i.category;
+-- Group by department and year of hire
+SELECT 
+    department,
+    YEAR(hire_date) AS hire_year,
+    COUNT(*) AS count
+FROM employees
+GROUP BY department, YEAR(hire_date);
 
 -- ============================================
--- 4. INTERSECT: Common Values
+-- 3. GROUP BY WITH MULTIPLE AGGREGATES
 -- ============================================
--- Find IDs that exist in both tables
-SELECT emp_id FROM employees_sales
-INTERSECT
-SELECT emp_id FROM employees_it;
-
--- MySQL simulation:
-SELECT DISTINCT s.emp_id
-FROM employees_sales s
-WHERE EXISTS (
-    SELECT 1 FROM employees_it i WHERE i.emp_id = s.emp_id
-);
-
--- ============================================
--- 5. PRACTICAL EXAMPLES
--- ============================================
-
--- Example 1: Find active customers who made purchases
--- CREATE TABLE customers (customer_id INT, name VARCHAR(50));
--- CREATE TABLE purchases (customer_id INT, amount DECIMAL(10,2));
--- SELECT customer_id FROM customers
--- INTERSECT
--- SELECT DISTINCT customer_id FROM purchases;
-
--- Example 2: Find products in stock and on order
--- CREATE TABLE stock (product_id INT, quantity INT);
--- CREATE TABLE orders (product_id INT, quantity INT);
--- SELECT product_id FROM stock
--- INTERSECT
--- SELECT product_id FROM orders;
-
--- Example 3: Students enrolled in both courses
-CREATE TABLE IF NOT EXISTS students_course_a (
-    student_id INT,
-    student_name VARCHAR(50)
-);
-
-CREATE TABLE IF NOT EXISTS students_course_b (
-    student_id INT,
-    student_name VARCHAR(50)
-);
-
-INSERT INTO students_course_a VALUES
-(1, 'Alice'),
-(2, 'Bob'),
-(3, 'Charlie');
-
-INSERT INTO students_course_b VALUES
-(2, 'Bob'),
-(3, 'Charlie'),
-(4, 'Diana');
-
--- Find students in BOTH courses
-SELECT DISTINCT s1.student_name
-FROM students_course_a s1
-INNER JOIN students_course_b s2 ON s1.student_name = s2.student_name;
+-- Average and max salary by department
+SELECT 
+    department,
+    COUNT(*) AS employee_count,
+    AVG(salary) AS avg_salary,
+    MAX(salary) AS highest_salary,
+    MIN(salary) AS lowest_salary,
+    SUM(salary) AS total_salary
+FROM employees
+GROUP BY department;
 
 -- ============================================
--- 6. INTERSECT vs INNER JOIN
+-- 4. GROUP BY WITH WHERE CLAUSE
 -- ============================================
--- INTERSECT: Returns only matching rows from first query
--- INNER JOIN: Returns all matching combinations
+-- Filter before grouping
+SELECT 
+    department,
+    COUNT(*) AS employee_count,
+    AVG(salary) AS avg_salary
+FROM employees
+WHERE salary > 65000
+GROUP BY department;
 
--- INTERSECT (returns unique matches)
-SELECT DISTINCT name FROM employees_sales
-WHERE name IN (SELECT name FROM employees_it);
-
--- INNER JOIN (could return duplicates)
-SELECT s.name
-FROM employees_sales s
-INNER JOIN employees_it i ON s.name = i.name;
+-- Employees hired after 2022
+SELECT 
+    department,
+    COUNT(*) AS recent_hires
+FROM employees
+WHERE YEAR(hire_date) >= 2023
+GROUP BY department;
 
 -- ============================================
--- 7. INTERSECT ALL: With Duplicates
+-- 5. GROUP BY WITH ORDER BY
 -- ============================================
--- MySQL simulation of INTERSECT ALL
--- Return matching rows, even if duplicates exist
+-- Order results by aggregate
+SELECT 
+    department,
+    COUNT(*) AS employee_count,
+    AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department
+ORDER BY avg_salary DESC;
 
-CREATE TABLE IF NOT EXISTS test_a (
-    value VARCHAR(50)
-);
+-- Top departments by payroll
+SELECT 
+    department,
+    SUM(salary) AS total_payroll
+FROM employees
+GROUP BY department
+ORDER BY total_payroll DESC;
 
-CREATE TABLE IF NOT EXISTS test_b (
-    value VARCHAR(50)
-);
+-- ============================================
+-- 6. GROUP BY WITH LIMIT
+-- ============================================
+-- Top 3 departments by employee count
+SELECT 
+    department,
+    COUNT(*) AS employee_count
+FROM employees
+GROUP BY department
+ORDER BY employee_count DESC
+LIMIT 3;
 
-INSERT INTO test_a VALUES ('Apple'), ('Apple'), ('Banana'), ('Cherry');
-INSERT INTO test_b VALUES ('Apple'), ('Banana'), ('Banana'), ('Date');
+-- ============================================
+-- 7. GROUP BY WITH EXPRESSIONS
+-- ============================================
+-- Group by year of hire
+SELECT 
+    YEAR(hire_date) AS hire_year,
+    COUNT(*) AS hires
+FROM employees
+GROUP BY YEAR(hire_date);
 
--- INTERSECT (removes duplicates)
-SELECT DISTINCT value FROM test_a
-WHERE value IN (SELECT value FROM test_b);
+-- Group by salary range
+SELECT 
+    CASE 
+        WHEN salary < 65000 THEN 'Entry Level'
+        WHEN salary < 75000 THEN 'Mid Level'
+        ELSE 'Senior'
+    END AS salary_level,
+    COUNT(*) AS count,
+    AVG(salary) AS avg_salary
+FROM employees
+GROUP BY salary_level;
 
--- INTERSECT ALL (keeps duplicates) - using join
-SELECT a.value
-FROM test_a a
-INNER JOIN test_b b ON a.value = b.value;
+-- ============================================
+-- 8. GROUP BY WITH DISTINCT
+-- ============================================
+-- Count distinct departments
+SELECT COUNT(DISTINCT department) FROM employees;
+
+-- However, DISTINCT in aggregates doesn't need GROUP BY
+SELECT 
+    department,
+    COUNT(DISTINCT SUBSTRING(first_name, 1, 1)) AS unique_first_letters
+FROM employees
+GROUP BY department;
+
+-- ============================================
+-- 9. PRACTICAL EXAMPLES
+-- ============================================
+
+-- Example 1: Department Payroll Summary
+SELECT 
+    department AS 'Department',
+    COUNT(*) AS 'Employees',
+    ROUND(AVG(salary), 2) AS 'Avg Salary',
+    SUM(salary) AS 'Total Payroll'
+FROM employees
+GROUP BY department
+ORDER BY 'Total Payroll' DESC;
+
+-- Example 2: Salary Distribution by Department
+SELECT 
+    department,
+    MIN(salary) AS min_salary,
+    ROUND(AVG(salary), 2) AS avg_salary,
+    MAX(salary) AS max_salary,
+    MAX(salary) - MIN(salary) AS salary_range
+FROM employees
+GROUP BY department;
+
+-- Example 3: Hiring Trends
+SELECT 
+    YEAR(hire_date) AS hire_year,
+    COUNT(*) AS hires,
+    ROUND(AVG(salary), 2) AS avg_starting_salary
+FROM employees
+GROUP BY YEAR(hire_date)
+ORDER BY hire_year;
+
+-- Example 4: Pay Grade Analysis
+SELECT 
+    CASE 
+        WHEN salary < 65000 THEN 'Level 1'
+        WHEN salary < 75000 THEN 'Level 2'
+        ELSE 'Level 3'
+    END AS pay_grade,
+    COUNT(*) AS employee_count,
+    ROUND(AVG(salary), 2) AS avg_salary,
+    SUM(salary) AS total_payroll
+FROM employees
+GROUP BY pay_grade;
+
+-- ============================================
+-- 10. RULES FOR GROUP BY
+-- ============================================
+-- - All non-aggregated columns in SELECT must be in GROUP BY
+-- - Aggregated columns don't go in GROUP BY
+-- - WHERE clause is applied BEFORE grouping
+-- - ORDER BY can reference grouped columns or aliases
+
+-- ============================================
+-- 11. ERROR: Missing Columns in GROUP BY
+-- ============================================
+-- This would cause an error in strict SQL modes:
+-- SELECT department, first_name, AVG(salary)
+-- FROM employees
+-- GROUP BY department;
+
+-- Correct version:
+-- SELECT department, AVG(salary)
+-- FROM employees
+-- GROUP BY department;
