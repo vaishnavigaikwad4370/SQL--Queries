@@ -1,236 +1,180 @@
 -- ============================================
--- Chapter 2: Advanced SQL
--- 03. Database Modification Commands (DML)
--- 03. Delete Commands
+-- ASSIGNMENT 1: DDL COMMANDS
+-- Data Definition Language (CREATE, ALTER, DROP)
 -- ============================================
--- DELETE removes rows from a table
+-- This assignment tests your ability to:
+-- 1. Create tables with proper structure
+-- 2. Modify existing table schemas
+-- 3. Drop tables and constraints
+-- 4. Understand data types and constraints
 
-USE company;
-
--- Create sample table
-CREATE TABLE IF NOT EXISTS employees (
-    emp_id INT PRIMARY KEY,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    email VARCHAR(100),
-    salary DECIMAL(10,2),
-    department VARCHAR(50),
-    hire_date DATE
-);
-
-INSERT IGNORE INTO employees VALUES
-(1, 'Alice', 'Smith', 'alice@company.com', 90000, 'Management', '2021-01-15'),
-(2, 'Bob', 'Johnson', 'bob@company.com', 75000, 'Sales', '2022-03-20'),
-(3, 'Charlie', 'Brown', 'charlie@company.com', 70000, 'Sales', '2022-06-10'),
-(4, 'Diana', 'Davis', 'diana@company.com', 65000, 'HR', '2023-02-01'),
-(5, 'Eve', 'Wilson', 'eve@company.com', 62000, 'IT', '2023-05-12'),
-(6, 'Frank', 'Miller', 'frank@company.com', 72000, 'IT', '2023-07-01');
+USE practice_db;
 
 -- ============================================
--- 1. DELETE: Single Row
+-- PROBLEM 1: Create Employee Table
 -- ============================================
--- Delete specific employee
-DELETE FROM employees
-WHERE emp_id = 6;
+-- Create a table called 'employees' with the following requirements:
+-- - emp_id: Integer, Primary Key, Auto-increment
+-- - first_name: String (max 50 chars), Required
+-- - last_name: String (max 50 chars), Required
+-- - email: String (max 100 chars), Must be unique
+-- - hire_date: Date
+-- - salary: Decimal (10,2), Should not be negative
+-- - department: String (max 50 chars)
 
--- ============================================
--- 2. DELETE: Multiple Rows by Condition
--- ============================================
--- Delete all employees from IT department
-DELETE FROM employees
-WHERE department = 'IT';
+-- YOUR SOLUTION HERE:
+-- CREATE TABLE employees (...)
 
--- Delete employees with salary < 65000
-DELETE FROM employees
-WHERE salary < 65000;
 
 -- ============================================
--- 3. DELETE: With AND Condition
+-- PROBLEM 2: Add Columns to Existing Table
 -- ============================================
--- Delete employees in Sales with salary < 70000
-DELETE FROM employees
-WHERE department = 'Sales' AND salary < 70000;
+-- Add the following columns to the employees table:
+-- - phone: VARCHAR(20), Optional
+-- - manager_id: INT, Optional (will reference emp_id)
+-- - last_review_date: DATE, Optional
 
--- ============================================
--- 4. DELETE: With OR Condition
--- ============================================
--- Delete employees from IT OR HR
-DELETE FROM employees
-WHERE department = 'IT' OR department = 'HR';
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees ADD COLUMN ...
+
 
 -- ============================================
--- 5. DELETE: With IN Clause
+-- PROBLEM 3: Create Department Table
 -- ============================================
--- Delete specific employees by ID
-DELETE FROM employees
-WHERE emp_id IN (1, 3, 5);
+-- Create a departments table:
+-- - dept_id: Integer, Primary Key, Auto-increment
+-- - dept_name: String (max 50 chars), Required, Unique
+-- - manager_id: Integer (can be NULL initially)
+-- - budget: Decimal (12,2), Must be >= 0
 
--- Delete employees from multiple departments
-DELETE FROM employees
-WHERE department IN ('Sales', 'Marketing');
+-- YOUR SOLUTION HERE:
+-- CREATE TABLE departments (...)
 
--- ============================================
--- 6. DELETE: With LIKE
--- ============================================
--- Delete employees with name starting with 'A'
-DELETE FROM employees
-WHERE first_name LIKE 'A%';
-
--- Delete employees from companies with 'Inc' in email
-DELETE FROM employees
-WHERE email LIKE '%inc.com%';
 
 -- ============================================
--- 7. DELETE: With Subquery
+-- PROBLEM 4: Modify Column Data Type
 -- ============================================
--- Delete employees with below average salary
-DELETE FROM employees
-WHERE salary < (SELECT AVG(salary) FROM employees);
+-- In the employees table, change:
+-- - email: From VARCHAR(100) to VARCHAR(150)
+-- - salary: From DECIMAL(10,2) to DECIMAL(12,2)
 
--- Delete employees not in a specific set
-DELETE FROM employees
-WHERE emp_id NOT IN (SELECT emp_id FROM high_performers);
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees MODIFY COLUMN ...
 
--- ============================================
--- 8. DELETE: Using JOIN (MySQL Syntax)
--- ============================================
--- Delete employees from low-performing departments
-CREATE TABLE IF NOT EXISTS departments (
-    dept_name VARCHAR(50),
-    performance_score INT
-);
-
-INSERT INTO departments VALUES
-('Sales', 80),
-('IT', 95),
-('HR', 70);
-
-DELETE e FROM employees e
-JOIN departments d ON e.department = d.dept_name
-WHERE d.performance_score < 75;
 
 -- ============================================
--- 9. TRUNCATE: vs DELETE
+-- PROBLEM 5: Add Foreign Key Constraint
 -- ============================================
--- TRUNCATE: Removes ALL rows, faster, resets auto-increment
--- DELETE: Removes specific rows (or all), slower, keeps auto-increment
+-- Add a FOREIGN KEY constraint to the employees table
+-- - Column: dept_id
+-- - References: departments(dept_id)
+-- Name the constraint: fk_emp_dept
 
--- Delete all rows (slow)
-DELETE FROM employees;
+-- First add the column if not exists:
+-- ALTER TABLE employees ADD COLUMN dept_id INT;
 
--- TRUNCATE all rows (fast)
-TRUNCATE TABLE employees;
+-- Then add the foreign key:
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees ADD CONSTRAINT ...
 
--- ============================================
--- 10. DELETE: Archive Before Delete
--- ============================================
--- Best practice: Archive data before deleting
-
--- Create archive table
-CREATE TABLE IF NOT EXISTS employees_archive LIKE employees;
-
--- Move old employees to archive
-INSERT INTO employees_archive
-SELECT * FROM employees
-WHERE YEAR(hire_date) < 2022;
-
--- Now safe to delete
-DELETE FROM employees
-WHERE YEAR(hire_date) < 2022;
 
 -- ============================================
--- 11. DELETE: All Rows (Very Careful!)
+-- PROBLEM 6: Add Check Constraint
 -- ============================================
--- Delete ALL employees
--- DELETE FROM employees;  -- AVOID without WHERE!
+-- Add a CHECK constraint to ensure salary is positive
+-- Name it: chk_positive_salary
 
--- Safe: Use TRUNCATE instead
--- TRUNCATE TABLE employees;
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees ADD CONSTRAINT ...
 
--- ============================================
--- 12. PRACTICAL EXAMPLES
--- ============================================
-
--- Example 1: Remove Test Data
-DELETE FROM employees
-WHERE email LIKE '%test%' OR email LIKE '%temp%';
-
--- Example 2: Remove Inactive Records
-DELETE FROM employees
-WHERE hire_date < DATE_SUB(CURDATE(), INTERVAL 3 YEAR);
-
--- Example 3: Cleanup NULL Records
-DELETE FROM employees
-WHERE email IS NULL AND phone IS NULL;
-
--- Example 4: Remove Duplicates (Keep Latest)
-DELETE FROM employees
-WHERE emp_id NOT IN (
-    SELECT MAX(emp_id) FROM employees
-    GROUP BY email
-);
 
 -- ============================================
--- 13. DELETE: Safety Practices
+-- PROBLEM 7: Drop a Constraint
 -- ============================================
--- Step 1: Preview what will be deleted
-SELECT * FROM employees WHERE department = 'IT';
+-- Drop the NOT NULL constraint from the phone column
+-- (Make phone column nullable)
 
--- Step 2: Backup or archive
-INSERT INTO employees_archive
-SELECT * FROM employees WHERE department = 'IT';
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees MODIFY COLUMN phone VARCHAR(20) NULL;
 
--- Step 3: Delete
-DELETE FROM employees WHERE department = 'IT';
-
--- Step 4: Verify
-SELECT COUNT(*) FROM employees;
 
 -- ============================================
--- 14. DELETE vs UPDATE
+-- PROBLEM 8: Create a Projects Table
 -- ============================================
--- DELETE: Remove rows completely
--- UPDATE: Keep rows but change values
+-- Design a complete projects table with:
+-- - project_id: INT, Primary Key, Auto-increment
+-- - project_name: VARCHAR(100), NOT NULL, UNIQUE
+-- - dept_id: INT, Foreign Key to departments(dept_id)
+-- - start_date: DATE, NOT NULL
+-- - end_date: DATE
+-- - budget: DECIMAL(12,2), CHECK > 0
+-- - status: VARCHAR(20), CHECK IN ('Planning', 'Active', 'Completed', 'Cancelled')
 
--- Instead of deleting inactive employees, mark as inactive
-UPDATE employees
-SET status = 'Inactive'
-WHERE YEAR(CURDATE()) - YEAR(hire_date) > 10;
+-- YOUR SOLUTION HERE:
+-- CREATE TABLE projects (...)
 
--- ============================================
--- 15. UNDERSTANDING FOREIGN KEYS WITH DELETE
--- ============================================
--- If table has foreign key constraints, you might not be able to delete
--- Create example:
-CREATE TABLE IF NOT EXISTS orders (
-    order_id INT PRIMARY KEY,
-    emp_id INT,
-    amount DECIMAL(10,2),
-    FOREIGN KEY (emp_id) REFERENCES employees(emp_id)
-);
-
--- Try to delete employee with orders - may fail
--- DELETE FROM employees WHERE emp_id = 1;
--- ERROR: Cannot delete or update parent row (foreign key constraint)
-
--- Options:
--- 1. Delete related orders first
-DELETE FROM orders WHERE emp_id = 1;
-DELETE FROM employees WHERE emp_id = 1;
-
--- 2. Use CASCADE delete (defined at table creation)
--- 3. Disable constraint (use with caution)
--- SET FOREIGN_KEY_CHECKS=0;
--- DELETE FROM employees;
--- SET FOREIGN_KEY_CHECKS=1;
 
 -- ============================================
--- 16. IMPORTANT REMINDERS
+-- PROBLEM 9: Rename a Column
 -- ============================================
--- - ALWAYS BACKUP before bulk deletes
--- - Use WHERE clause (NEVER delete without it unless using TRUNCATE)
--- - Test with SELECT first
--- - Consider archiving instead of deleting
--- - Be aware of foreign key constraints
--- - Use transactions for safety
--- - Remember: Deleted data is hard/impossible to recover
+-- In the employees table, rename:
+-- - hire_date TO employment_date
+
+-- YOUR SOLUTION HERE:
+-- ALTER TABLE employees RENAME COLUMN ...
+
+
+-- ============================================
+-- PROBLEM 10: View Table Structure
+-- ============================================
+-- Show the structure of the employees table
+
+-- YOUR SOLUTION HERE:
+-- DESCRIBE employees;
+
+
+-- ============================================
+-- EXPECTED OUTPUTS
+-- ============================================
+-- Problem 1: Table created successfully
+-- Problem 2: 3 columns added
+-- Problem 3: departments table created with constraints
+-- Problem 4: Column data types modified
+-- Problem 5: Foreign key constraint added
+-- Problem 6: Check constraint added (salary > 0)
+-- Problem 7: phone column now allows NULL
+-- Problem 8: projects table created with all constraints
+-- Problem 9: Column renamed successfully
+-- Problem 10: Table structure displayed with all columns
+
+-- ============================================
+-- BONUS CHALLENGES
+-- ============================================
+
+-- BONUS 1: Create Employee Skills Table
+-- Design a junction table for employees and their skills
+-- - emp_id: INT, Foreign Key
+-- - skill_id: INT, Foreign Key
+-- - proficiency_level: INT, CHECK BETWEEN 1 AND 5
+-- - PRIMARY KEY: (emp_id, skill_id)
+
+-- BONUS 2: Add a Computed Column
+-- Add a computed column to employees showing years of service
+-- (Challenge: MySQL doesn't support generated columns in all versions)
+
+-- BONUS 3: Create an Audit Table
+-- Create a table to track changes to employees
+-- Store: audit_id, emp_id, action (INSERT/UPDATE/DELETE), change_date, old_value, new_value
+
+-- ============================================
+-- LEARNING OUTCOMES
+-- ============================================
+-- After completing this assignment, you should be able to:
+-- ✅ Create well-designed tables with proper structure
+-- ✅ Apply appropriate data types for different values
+-- ✅ Enforce constraints at the table level
+-- ✅ Modify existing tables safely
+-- ✅ Create relationships using foreign keys
+-- ✅ Rename and drop columns appropriately
+-- ✅ Use composite primary keys for junction tables
+-- ✅ Understand the difference between constraints
